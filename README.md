@@ -7,6 +7,8 @@ Submodule source: ```https://github.com/calvong/ECE4078_Lab_2022```
 ```git clone git@github.com:aprit0/412_ECE4078.git``` - Avoid Https as it will not allow you to push
 
 # Only run below from ~/412_ECE4078
-```git add . 
+```
+   git add . 
    git commit -m "add message"
-   git push```
+   git push
+   ```
