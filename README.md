@@ -8,6 +8,8 @@ Submodule source: ```https://github.com/calvong/ECE4078_Lab_2022```
 
 # Only run below from ~/412_ECE4078
 ```
+   git pull
+   ---------------
    git add . 
    git commit -m "add message"
    git push
