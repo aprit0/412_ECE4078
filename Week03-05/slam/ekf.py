@@ -87,13 +87,13 @@ class EKF:
 
     # the prediction step of EKF
     def predict(self, raw_drive_meas):
-
         F = self.state_transition(raw_drive_meas)  # F = A in notes
         x = self.get_state_vector()  # Sigma k
         # TODO: add your codes here to compute the predicted x
         q = self.predict_covariance(raw_drive_meas)
         self.P = F @ self.P @ F.T + q
-        
+
+
 
     # the update step of EKF
     def update(self, measurements):
@@ -115,14 +115,14 @@ class EKF:
         z_hat = z_hat.reshape((-1, 1), order="F")  # H(mu_k)
         H = self.robot.derivative_measure(self.markers, idx_list)  # H == C
 
-        x = self.get_state_vector()  # x_hat
+        x_hat = self.get_state_vector()  # x_hat
 
         # TODO: add your codes here to compute the updated x
         S = H @ self.P @ H.T + R
         K = self.P @ H.T @ np.linalg.inv(S)
 
         y = z - z_hat
-        x = x + K @ y
+        x = x_hat + K @ y
         self.set_state_vector(x)
         self.P = (np.eye(x.shape[0]) - K @ H) @ self.P
 
