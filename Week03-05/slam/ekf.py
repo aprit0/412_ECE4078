@@ -92,7 +92,8 @@ class EKF:
         x = self.get_state_vector()  # Sigma k
         # TODO: add your codes here to compute the predicted x
         q = self.predict_covariance(raw_drive_meas)
-        return F @ x @ F.T + q
+        self.P = F @ x @ F.T + q
+        
 
     # the update step of EKF
     def update(self, measurements):
@@ -115,7 +116,6 @@ class EKF:
         H = self.robot.derivative_measure(self.markers, idx_list)  # H == C
 
         x = self.get_state_vector()  # x_hat
-        self.P = self.predict(measurements)
 
         # TODO: add your codes here to compute the updated x
         S = H @ self.P @ H.T + R
