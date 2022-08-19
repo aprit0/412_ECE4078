@@ -2,11 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="0695032c-d3e6-49d1-941c-741870d2fed5" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Week03-05/calibration/param/baseline.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Week03-05/calibration/param/baseline.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Week03-05/calibration/wheel_calibration.py" beforeDir="false" afterPath="$PROJECT_DIR$/Week03-05/calibration/wheel_calibration.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Week03-05/slam/ekf.py" beforeDir="false" afterPath="$PROJECT_DIR$/Week03-05/slam/ekf.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Week03-05/slam/robot.py" beforeDir="false" afterPath="$PROJECT_DIR$/Week03-05/slam/robot.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
