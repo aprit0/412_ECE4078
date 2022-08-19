@@ -135,7 +135,7 @@ class Robot:
             Jac2[0,0] = dt*np.cos(th)
             Jac2[1,0] = dt*np.sin(th)
         else:
-            Jac2[f2,1] = dt
+            Jac2[2,1] = dt
 
         # Derivative of x,y,theta w.r.t. left_speed, right_speed
         Jac = Jac2 @ Jac1
