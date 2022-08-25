@@ -90,6 +90,7 @@ class EKF:
         F = self.state_transition(raw_drive_meas)  # F = A in notes
         x = self.get_state_vector()  # Sigma k
         # TODO: add your codes here to compute the predicted x
+        self.robot.drive(raw_drive_meas)
         q = self.predict_covariance(raw_drive_meas)
         self.P = F @ self.P @ F.T + q
         self.set_state_vector(x)
