@@ -44,10 +44,8 @@ def calibrateWheelRadius():
     scale = 0
     for delta_time, wheel_vel in zip(delta_times, wheel_velocities_range):
         num = len(wheel_velocities_range)
-        scale += 1/num/delta_time/wheel_vel
-    scale = scale / num
+        scale += (1/num) * (1/(delta_time * wheel_vel))
     print("The scale parameter is estimated as {:.6f} m/ticks.".format(scale))
-
     return scale
 
 
@@ -89,8 +87,8 @@ def calibrateBaseline(scale):
     baseline = 0
     for delta_time, wheel_vel in zip(delta_times, wheel_velocities_range):
         num = len(wheel_velocities_range)
-        baseline += 1 / num * (1 / (2*np.pi/delta_time) * scale * 2 * wheel_vel)
-    baseline /= num/10
+        baseline += (1/num) * (scale*delta_time*wheel_vel)/(np.pi)
+
     print("The baseline parameter is estimated as {:.6f} m.".format(baseline))
 
     return baseline
