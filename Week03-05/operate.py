@@ -201,12 +201,8 @@ class Operate:
                 self.command['motion'] = [1, -1]
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_a:
                 self.command['motion'] = [0, 1]
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
-                self.command['motion'] = [0, 0]
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_d:
                 self.command['motion'] = [0, -1]
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
-                self.command['motion'] = [0, 0]
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_z:
                 self.command['motion'] = [-1, -1]
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_x:
