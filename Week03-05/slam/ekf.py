@@ -87,13 +87,15 @@ class EKF:
 
     # the prediction step of EKF
     def predict(self, raw_drive_meas):
-        F = self.state_transition(raw_drive_meas)  # F = A in notes
-        x = self.get_state_vector()  # Sigma k
-        # TODO: add your codes here to compute the predicted x
+        print(raw_drive_meas)
         self.robot.drive(raw_drive_meas)
+        x = self.get_state_vector()  # Sigma k
+        F = self.state_transition(raw_drive_meas)  # F = A in notes
+        # TODO: add your codes here to compute the predicted x
+        # print('x', x[:3])
         q = self.predict_covariance(raw_drive_meas)
         self.P = F @ self.P @ F.T + q
-        self.set_state_vector(x)
+        # self.set_state_vector(x)
 
 
     # the update step of EKF

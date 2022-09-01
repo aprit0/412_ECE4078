@@ -1,0 +1,7 @@
+roslaunch penguinpi_gazebo ECE4078.launch
+
+rosrun penguinpi_gazebo scene_manager.py -l lab3_M2_sim_map.txt
+
+python3 operate.py
+
+python3 SLAM_eval.py lab3_M2_sim_map.txt lab_output/slam.txt
