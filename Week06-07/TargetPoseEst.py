@@ -85,8 +85,21 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
         
         ######### Replace with your codes #########
         # TODO: compute pose of the target based on bounding box info and robot's pose
-        target_pose = {'y': 0.0, 'x': 0.0}
-        
+        target_pose = {'x': 0.0, 'y': 0.0}
+        fx = camera_matrix[0, 0]
+        fy = camera_matrix[1, 1]
+        camera_height = 37.5 * 0.001
+        image_height = 480
+        image_width = 640
+
+        Z = ((fy * true_height * image_height) / (box[3] * camera_height)) + robot_pose[1]# Real world Y pose
+        dist_per_pixel = fx / (image_width * 0.5)
+        x = ((box[0] - image_width * 0.5) + box[2]/2) * dist_per_pixel + robot_pose[0]
+        theta = np.atan(x / Z)
+        X = Z * np.cos(theta) # Real world x pose
+        target_pose['x'] = X
+        target_pose['y'] = Z
+
         target_pose_dict[target_list[target_num-1]] = target_pose
         ###########################################
     
