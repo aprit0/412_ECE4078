@@ -96,7 +96,7 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
 
         Z = true_height * f / box[3]
         box_centre = box[0]
-        delta = np.atan((box_centre - image_width * 0.5) / Z)
+        delta = np.arctan((box_centre - image_width * 0.5) / Z)
         X = Z * np.cos(delta + robot_pose[2]) + robot_pose[0]  # Real world x pose
         Y = Z * np.sin(delta + robot_pose[2]) + robot_pose[1]
 
