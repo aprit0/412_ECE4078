@@ -91,12 +91,11 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
         target_pose = {'x': 0.0, 'y': 0.0}
         f = camera_matrix[0, 0]
         camera_height = 37.5 * 0.001
-        image_height = 480
-        image_width = 640
 
         Z = true_height * f / box[3]
-        box_centre = box[0] + box[2] * 0.5
-        delta = np.atan((box_centre - image_width * 0.5) / Z)
+        box_centre = box[0]
+        delta = np.arctan((camera_matrix[0][2] - box_centre) / Z)
+
         X = Z * np.cos(delta + robot_pose[2]) + robot_pose[0]  # Real world x pose
         Y = Z * np.sin(delta + robot_pose[2]) + robot_pose[1]
 
