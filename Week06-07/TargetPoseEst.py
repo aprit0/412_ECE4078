@@ -11,21 +11,23 @@ from machinevisiontoolbox import Image
 import matplotlib.pyplot as plt
 import PIL
 
+
 # use the machinevision toolbox to get the bounding box of the detected target(s) in an image
 def get_bounding_box(target_number, image_path):
-    image = PIL.Image.open(image_path).resize((640,480), PIL.Image.NEAREST)
-    target = Image(image)==target_number
+    image = PIL.Image.open(image_path).resize((640, 480), PIL.Image.NEAREST)
+    target = Image(image) == target_number
     blobs = target.blobs()
-    [[u1,u2],[v1,v2]] = blobs[0].bbox # bounding box
-    width = abs(u1-u2)
-    height = abs(v1-v2)
-    center = np.array(blobs[0].centroid).reshape(2,)
-    box = [center[0], center[1], int(width), int(height)] # box=[x,y,width,height]
+    [[u1, u2], [v1, v2]] = blobs[0].bbox  # bounding box
+    width = abs(u1 - u2)
+    height = abs(v1 - v2)
+    center = np.array(blobs[0].centroid).reshape(2, )
+    box = [center[0], center[1], int(width), int(height)]  # box=[x,y,width,height]
     # plt.imshow(fruit.image)
     # plt.annotate(str(fruit_number), np.array(blobs[0].centroid).reshape(2,))
     # plt.show()
     # assert len(blobs) == 1, "An image should contain only one object of each target type"
     return box
+
 
 # read in the list of detection results with bounding boxes and their matching robot pose info
 def get_image_info(base_dir, file_path, image_poses):
@@ -40,21 +42,22 @@ def get_image_info(base_dir, file_path, image_poses):
     for target_num in img_vals:
         if target_num > 0:
             try:
-                box = get_bounding_box(target_num, base_dir/file_path) # [x,y,width,height]
-                pose = image_poses[file_path] # [x, y, theta]
-                target_lst_box[target_num-1].append(box) # bouncing box of target
-                target_lst_pose[target_num-1].append(np.array(pose).reshape(3,)) # robot pose
+                box = get_bounding_box(target_num, base_dir / file_path)  # [x,y,width,height]
+                pose = image_poses[file_path]  # [x, y, theta]
+                target_lst_box[target_num - 1].append(box)  # bouncing box of target
+                target_lst_pose[target_num - 1].append(np.array(pose).reshape(3, ))  # robot pose
             except ZeroDivisionError:
                 pass
 
     # if there are more than one objects of the same type, combine them
     for i in range(3):
-        if len(target_lst_box[i])>0:
+        if len(target_lst_box[i]) > 0:
             box = np.stack(target_lst_box[i], axis=1)
             pose = np.stack(target_lst_pose[i], axis=1)
-            completed_img_dict[i+1] = {'target': box, 'robot': pose}
-        
+            completed_img_dict[i + 1] = {'target': box, 'robot': pose}
+
     return completed_img_dict
+
 
 # estimate the pose of a target based on size and location of its bounding box in the robot's camera view and the robot's pose
 def estimate_pose(base_dir, camera_matrix, completed_img_dict):
@@ -79,37 +82,38 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
     target_pose_dict = {}
     # for each target in each detection output, estimate its pose
     for target_num in completed_img_dict.keys():
-        box = completed_img_dict[target_num]['target'] # [[x],[y],[width],[height]]
-        robot_pose = completed_img_dict[target_num]['robot'] # [[x], [y], [theta]]
-        true_height = target_dimensions[target_num-1][2]
-        
+        box = completed_img_dict[target_num]['target']  # [[x],[y],[width],[height]]
+        robot_pose = completed_img_dict[target_num]['robot']  # [[x], [y], [theta]]
+        true_height = target_dimensions[target_num - 1][2]
+
         ######### Replace with your codes #########
         # TODO: compute pose of the target based on bounding box info and robot's pose
         target_pose = {'x': 0.0, 'y': 0.0}
-        fx = camera_matrix[0, 0]
-        fy = camera_matrix[1, 1]
+        f = camera_matrix[0, 0]
         camera_height = 37.5 * 0.001
         image_height = 480
         image_width = 640
 
-        Z = ((fy * true_height * image_height) / (box[3] * camera_height)) + robot_pose[1]  # Real world Y pose
-        dist_per_pixel = fx / (image_width * 0.5)
-        x = ((box[0] - image_width * 0.5) + box[2] / 2) * dist_per_pixel + robot_pose[0]
-        theta = np.atan(x / Z)
-        X = Z * np.cos(theta)  # Real world x pose
+        Z = true_height * f / box[3]
+        box_centre = box[0] + box[2] * 0.5
+        delta = np.atan((box_centre - image_width * 0.5) / Z)
+        X = Z * np.cos(delta + robot_pose[2]) + robot_pose[0]  # Real world x pose
+        Y = Z * np.sin(delta + robot_pose[2]) + robot_pose[1]
+
         target_pose['x'] = X
-        target_pose['y'] = Z
-        target_pose_dict[target_list[target_num-1]] = target_pose
+        target_pose['y'] = Y
+        target_pose_dict[target_list[target_num - 1]] = target_pose
         ###########################################
-    
+
     return target_pose_dict
+
 
 # merge the estimations of the targets so that there are at most 3 estimations of each target type
 def merge_estimations(target_pose_dict):
     target_pose_dict = target_pose_dict
     apple_est, lemon_est, pear_est, orange_est, strawberry_est = [], [], [], [], []
     target_est = {}
-    
+
     # combine the estimations from multiple detector outputs
     for f in target_map:
         for key in target_map[f]:
@@ -139,27 +143,27 @@ def merge_estimations(target_pose_dict):
 
     for i in range(2):
         try:
-            target_est['apple_'+str(i)] = {'y':apple_est[i][0], 'x':apple_est[i][1]}
+            target_est['apple_' + str(i)] = {'y': apple_est[i][0], 'x': apple_est[i][1]}
         except:
             pass
         try:
-            target_est['lemon_'+str(i)] = {'y':lemon_est[i][0], 'x':lemon_est[i][1]}
+            target_est['lemon_' + str(i)] = {'y': lemon_est[i][0], 'x': lemon_est[i][1]}
         except:
             pass
         try:
-            target_est['pear_'+str(i)] = {'y':pear_est[i][0], 'x':pear_est[i][1]}
+            target_est['pear_' + str(i)] = {'y': pear_est[i][0], 'x': pear_est[i][1]}
         except:
             pass
         try:
-            target_est['orange_'+str(i)] = {'y':orange_est[i][0], 'x':orange_est[i][1]}
+            target_est['orange_' + str(i)] = {'y': orange_est[i][0], 'x': orange_est[i][1]}
         except:
             pass
         try:
-            target_est['strawberry_'+str(i)] = {'y':strawberry_est[i][0], 'x':strawberry_est[i][1]}
+            target_est['strawberry_' + str(i)] = {'y': strawberry_est[i][0], 'x': strawberry_est[i][1]}
         except:
             pass
     ###########################################
-        
+
     return target_est
 
 
@@ -168,29 +172,25 @@ if __name__ == "__main__":
     fileK = "{}intrinsic.txt".format('./calibration/param/')
     camera_matrix = np.loadtxt(fileK, delimiter=',')
     base_dir = Path('./')
-    
-    
+
     # a dictionary of all the saved detector outputs
     image_poses = {}
-    with open(base_dir/'lab_output/images.txt') as fp:
+    with open(base_dir / 'lab_output/images.txt') as fp:
         for line in fp.readlines():
             pose_dict = ast.literal_eval(line)
             image_poses[pose_dict['imgfname']] = pose_dict['pose']
-    
+
     # estimate pose of targets in each detector output
-    target_map = {}        
+    target_map = {}
     for file_path in image_poses.keys():
         completed_img_dict = get_image_info(base_dir, file_path, image_poses)
         target_map[file_path] = estimate_pose(base_dir, camera_matrix, completed_img_dict)
 
     # merge the estimations of the targets so that there are at most 3 estimations of each target type
     target_est = merge_estimations(target_map)
-                     
+
     # save target pose estimations
-    with open(base_dir/'lab_output/targets.txt', 'w') as fo:
+    with open(base_dir / 'lab_output/targets.txt', 'w') as fo:
         json.dump(target_est, fo)
-    
+
     print('Estimations saved!')
-
-
-
