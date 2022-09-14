@@ -48,6 +48,7 @@ def compute_dist(gt_list, est_list):
         for est in est_list:
             dist.append(np.linalg.norm(gt-est)) # compute Euclidean distance
         dist.sort()
+        print(gt_list, est_list)
         dist_list.append(dist[0]) # distance between the target and its closest estimation
         dist = []
     dist_av = sum(dist_list)/len(dist_list) # average distance
@@ -58,8 +59,8 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser("Matching the estimated map and the true map")
-    parser.add_argument("--truth", type=str, default='M3_marking_map.txt')
-    parser.add_argument("--est", type=str, default='lab_output/targets.txt')
+    parser.add_argument("--truth", type=str, default='Example_Dataset/TrueMap.txt')# M3_marking_map.txt')
+    parser.add_argument("--est", type=str, default='lab_output/targets.txt')#test_lab
     args, _ = parser.parse_known_args()
 
     # read in ground truth and estimations

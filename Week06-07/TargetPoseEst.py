@@ -33,8 +33,8 @@ def get_bounding_box(target_number, image_path):
 # read in the list of detection results with bounding boxes and their matching robot pose info
 def get_image_info(base_dir, file_path, image_poses):
     # there are at most three types of targets in each image
-    target_lst_box = [[], [], []]
-    target_lst_pose = [[], [], []]
+    target_lst_box = [[], [], [], [], []]
+    target_lst_pose = [[], [], [], [], []]
     completed_img_dict = {}
 
     # add the bounding box info of each target in each image
@@ -89,31 +89,58 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
 
         ######### Replace with your codes #########
         # TODO: compute pose of the target based on bounding box info and robot's pose
+        '''
+        true_width = (target_dimensions[target_num - 1][0] + target_dimensions[target_num - 1][1]) / 2
+
         target_pose = {'x': 0.0, 'y': 0.0}
-        f = camera_matrix[0, 0]
         multiple = true_height / box[3]
 
-        Z = multiple * f
+        Z = ((focal_length * true_height) / box[3] + (focal_length * true_width) / box[2]) / 2
         box_centre = box[0]
-        delta = np.arctan(((camera_matrix[0][2] - box_centre) * multiple) / Z)
+        delta = np.arctan((box_centre - camera_matrix[0][2]) / focal_length)
 
-        X = Z * np.cos(delta + robot_pose[2]) + robot_pose[0]  # Real world x pose
-        Y = Z * np.sin(delta + robot_pose[2]) + robot_pose[1]
+        X = float(Z * np.cos(robot_pose[2] - delta) + robot_pose[0])  # Real world x pose
+        Y = float(Z * np.sin(robot_pose[2] - delta) + robot_pose[1])
 
         target_pose['x'] = X
         target_pose['y'] = Y
+        print('X', X, Y)
         target_pose_dict[target_list[target_num - 1]] = target_pose
+        '''
+
+        th = robot_pose[2][0]
+        R = np.array([
+            [np.cos(th), -np.sin(th)],
+            [np.sin(th), np.cos(th)]
+        ])
+
+        scaling_fac = true_height / box[3]
+        depth = focal_length * scaling_fac
+        horizontal_offset = (camera_matrix[0][2] - box[0][0]) * scaling_fac
+        x_vec = np.array([depth, horizontal_offset])
+        x_vec = R @ x_vec
+        x_world = x_vec + robot_pose[0:2]
+        target_pose = {'y': x_world[1][0], 'x': x_world[0][0]}
+        target_pose_dict[target_list[target_num - 1]] = target_pose
+
+        print('X', x_world)
+
         ###########################################
 
     return target_pose_dict
+
+
 def clustering(fruit_list):
-    X = np.array(fruit_list)
+    X = np.squeeze(np.array(fruit_list))
+    print(X.shape)
     kmeans = KMeans(n_clusters=2, random_state=0).fit(X)
-    return list(kmeans.cluster_centers_)
+    centres = np.clip(kmeans.cluster_centers_, -1.2, 1.2)
+    return list(centres)
+
 
 # merge the estimations of the targets so that there are at most 3 estimations of each target type
 def merge_estimations(target_pose_dict):
-    target_pose_dict = target_pose_dict
+    target_map = target_pose_dict
     apple_est, lemon_est, pear_est, orange_est, strawberry_est = [], [], [], [], []
     target_est = {}
 
@@ -133,16 +160,39 @@ def merge_estimations(target_pose_dict):
 
     ######### Replace with your codes #########
     # TODO: the operation below takes the first three estimations of each target type, replace it with a better merge solution
+    print(lemon_est)
+    print(apple_est)
+    print(len(lemon_est[0]), len(apple_est[0]))
     if len(apple_est) > 2:
         apple_est = clustering(apple_est[0:2])
+    elif not apple_est:
+        apple_est = [[0.01, 0.01], [0.01, 0.01]]
+    else:
+        apple_est.append([0., 0.])
     if len(lemon_est) > 2:
         lemon_est = clustering(lemon_est[0:2])
+    elif not lemon_est:
+        lemon_est = [[0., 0.], [0., 0.]]
+    else:
+        lemon_est.append([0., 0.])
     if len(pear_est) > 2:
         pear_est = clustering(pear_est[0:2])
+    elif not pear_est:
+        pear_est = [[0., 0.], [0., 0.]]
+    else:
+        pear_est.append([0., 0.])
     if len(orange_est) > 2:
         orange_est = clustering(orange_est[0:2])
+    elif not orange_est:
+        orange_est = [[0., 0.], [0., 0.]]
+    else:
+        orange_est.append([0., 0.])
     if len(strawberry_est) > 2:
         strawberry_est = clustering(strawberry_est[0:2])
+    elif not strawberry_est:
+        strawberry_est = [[0., 0.], [0., 0.]]
+    else:
+        strawberry_est.append([0., 0.])
 
     for i in range(2):
         try:
@@ -194,6 +244,7 @@ if __name__ == "__main__":
 
     # save target pose estimations
     with open(base_dir / 'lab_output/targets.txt', 'w') as fo:
+        print(target_est)
         json.dump(target_est, fo)
 
     print('Estimations saved!')
