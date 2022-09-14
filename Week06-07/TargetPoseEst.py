@@ -7,6 +7,7 @@ import ast
 # import cv2
 import math
 from machinevisiontoolbox import Image
+from sklearn.cluster import KMeans
 
 import matplotlib.pyplot as plt
 import PIL
@@ -90,11 +91,11 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
         # TODO: compute pose of the target based on bounding box info and robot's pose
         target_pose = {'x': 0.0, 'y': 0.0}
         f = camera_matrix[0, 0]
-        camera_height = 37.5 * 0.001
+        multiple = true_height / box[3]
 
-        Z = true_height * f / box[3]
+        Z = multiple * f
         box_centre = box[0]
-        delta = np.arctan((camera_matrix[0][2] - box_centre) / Z)
+        delta = np.arctan(((camera_matrix[0][2] - box_centre) * multiple) / Z)
 
         X = Z * np.cos(delta + robot_pose[2]) + robot_pose[0]  # Real world x pose
         Y = Z * np.sin(delta + robot_pose[2]) + robot_pose[1]
@@ -105,7 +106,10 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
         ###########################################
 
     return target_pose_dict
-
+def clustering(fruit_list):
+    X = np.array(fruit_list)
+    kmeans = KMeans(n_clusters=2, random_state=0).fit(X)
+    return list(kmeans.cluster_centers_)
 
 # merge the estimations of the targets so that there are at most 3 estimations of each target type
 def merge_estimations(target_pose_dict):
@@ -130,15 +134,15 @@ def merge_estimations(target_pose_dict):
     ######### Replace with your codes #########
     # TODO: the operation below takes the first three estimations of each target type, replace it with a better merge solution
     if len(apple_est) > 2:
-        apple_est = apple_est[0:2]
+        apple_est = clustering(apple_est[0:2])
     if len(lemon_est) > 2:
-        lemon_est = lemon_est[0:2]
+        lemon_est = clustering(lemon_est[0:2])
     if len(pear_est) > 2:
-        pear_est = pear_est[0:2]
+        pear_est = clustering(pear_est[0:2])
     if len(orange_est) > 2:
-        orange_est = orange_est[0:2]
+        orange_est = clustering(orange_est[0:2])
     if len(strawberry_est) > 2:
-        strawberry_est = strawberry_est[0:2]
+        strawberry_est = clustering(strawberry_est[0:2])
 
     for i in range(2):
         try:
