@@ -71,7 +71,8 @@ class Detector:
         if ckpt_exists:
             ckpt = torch.load(ckpt_path,
                               map_location=lambda storage, loc: storage)
-            self.model.load_state_dict(ckpt['weights'])
+            print(ckpt)
+            self.model.load_state_dict(ckpt['opt'])#weights'])
         else:
             print(f'checkpoint not found, weights are randomly initialised')
             

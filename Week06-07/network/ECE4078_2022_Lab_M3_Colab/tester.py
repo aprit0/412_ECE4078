@@ -2,6 +2,7 @@ import numpy as np
 from PIL import Image
 from detector import Detector
 import os
+from matplotlib import pyplot as plt
 from tqdm import tqdm
 
 
@@ -18,3 +19,9 @@ for image_name in all_test_images:
     print(pred.shape, type(pred))
     im = Image.fromarray(pred.astype('uint8'))
     im.save("out/{}".format(image_name))
+    fig, ax = plt.subplots(1, 2)
+    ax[0].imshow(np_img)
+    ax[1].imshow(colour_map)
+    plt.title(np.unique(pred))
+    plt.show()
+
