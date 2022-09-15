@@ -16,7 +16,7 @@ Week06-07/
 Instructions:
     1. Place all the files in the correct locations specified above
     2. cd yolov5/
-    3. pip install -r Requirements.txt ## torch.__version__ > 1.7 is required for YOLO
+    3. pip install -r requirements.txt ## torch.__version__ > 1.7 is required for YOLO
     4. cd ..
     5. python TargetPoseEst.py ## python3 required
     6. python CV_eval.py ## python3 required
