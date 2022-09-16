@@ -9,11 +9,7 @@ import argparse
 import time
 
 # import SLAM components
-sys.path.append('{}/slam'.format(os.getcwd()))
-from slam.ekf import EKF
-from slam.robot import Robot
-import slam.aruco_detector as aruco
-
+from operate import Operate
 # import utility functions
 sys.path.insert(0, "util")
 from pibot import PenguinPi
@@ -143,10 +139,15 @@ if __name__ == "__main__":
     parser.add_argument("--map", type=str, default='M4_true_map.txt')
     parser.add_argument("--ip", metavar='', type=str, default='localhost')
     parser.add_argument("--port", metavar='', type=int, default=40000)
+    parser.add_argument("--calib_dir", type=str, default="calibration/param/")
+    parser.add_argument("--save_data", action='store_true')
+    parser.add_argument("--play_data", action='store_true')
+    parser.add_argument("--ckpt", default='network/scripts/model/model.best.pth')
     args, _ = parser.parse_known_args()
 
-    ppi = PenguinPi(args.ip,args.port)
-
+    operate = Operate(args)
+    # ppi = PenguinPi(args.ip,args.port)
+    ppi = operate.pibot
     # read in the true map
     fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
     search_list = read_search_list()
