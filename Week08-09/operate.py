@@ -11,6 +11,7 @@ sys.path.insert(0, "{}/utility".format(os.getcwd()))
 from util.pibot import PenguinPi # access the robot
 import util.DatasetHandler as dh # save/load functions
 import util.measure as measure # measurements
+import pygame # pyhton package for GUI
 import shutil # python package for file operations
 
 # import SLAM components you developed in M2
@@ -77,7 +78,7 @@ class Operate:
         else:
             self.detector = Detector(args.ckpt, use_gpu=False)
             self.network_vis = np.ones((240, 320,3))* 100
-        # self.bg = pygame.image.load('pics/gui_mask.jpg')
+            self.bg = pygame.image.load('pics/gui_mask.jpg')
 
     # wheel control
     def control(self):       
@@ -166,7 +167,64 @@ class Operate:
                 self.notification = f'No prediction in buffer, save ignored'
             self.command['save_inference'] = False
 
-    # keyboard teleoperation        
+        # paint the GUI
+        def draw(self, canvas):
+            canvas.blit(self.bg, (0, 0))
+            text_colour = (220, 220, 220)
+            v_pad = 40
+            h_pad = 20
+
+            # paint SLAM outputs
+            ekf_view = self.ekf.draw_slam_state(res=(320, 480 + v_pad),
+                                                not_pause=self.ekf_on)
+            canvas.blit(ekf_view, (2 * h_pad + 320, v_pad))
+            robot_view = cv2.resize(self.aruco_img, (320, 240))
+            self.draw_pygame_window(canvas, robot_view,
+                                    position=(h_pad, v_pad)
+                                    )
+
+            # for target detector (M3)
+            detector_view = cv2.resize(self.network_vis,
+                                       (320, 240), cv2.INTER_NEAREST)
+            self.draw_pygame_window(canvas, detector_view,
+                                    position=(h_pad, 240 + 2 * v_pad)
+                                    )
+
+            # canvas.blit(self.gui_mask, (0, 0))
+            self.put_caption(canvas, caption='SLAM', position=(2 * h_pad + 320, v_pad))
+            self.put_caption(canvas, caption='Detector',
+                             position=(h_pad, 240 + 2 * v_pad))
+            self.put_caption(canvas, caption='PiBot Cam', position=(h_pad, v_pad))
+
+            notifiation = TEXT_FONT.render(self.notification,
+                                           False, text_colour)
+            canvas.blit(notifiation, (h_pad + 10, 596))
+
+            time_remain = self.count_down - time.time() + self.start_time
+            if time_remain > 0:
+                time_remain = f'Count Down: {time_remain:03.0f}s'
+            elif int(time_remain) % 2 == 0:
+                time_remain = "Time Is Up !!!"
+            else:
+                time_remain = ""
+            count_down_surface = TEXT_FONT.render(time_remain, False, (50, 50, 50))
+            canvas.blit(count_down_surface, (2 * h_pad + 320 + 5, 530))
+            return canvas
+
+        @staticmethod
+        def draw_pygame_window(canvas, cv2_img, position):
+            cv2_img = np.rot90(cv2_img)
+            view = pygame.surfarray.make_surface(cv2_img)
+            view = pygame.transform.flip(view, True, False)
+            canvas.blit(view, position)
+
+        @staticmethod
+        def put_caption(canvas, caption, position, text_colour=(200, 200, 200)):
+            caption_surface = TITLE_FONT.render(caption,
+                                                False, text_colour)
+            canvas.blit(caption_surface, (position[0], position[1] - 25))
+
+    # keyboard teleoperation
     def update_keyboard(self):
         for event in pygame.event.get():
             # drive forward

@@ -58,7 +58,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser("Matching the estimated map and the true map")
-    parser.add_argument("--truth", type=str, default='M3_marking_map.txt')
+    parser.add_argument("--truth", type=str, default='M4_marking_map.txt')
     parser.add_argument("--est", type=str, default='lab_output/targets.txt')
     args, _ = parser.parse_known_args()
 
