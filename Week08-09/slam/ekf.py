@@ -155,7 +155,11 @@ class EKF:
                 # ignore known tags
                 continue
 
-            lm_bff = lm.position
+            try:
+                lm_bff = lm.position
+            except:
+                lm_bff = lm.coordinates
+
             lm_inertial = robot_xy + R_theta @ lm_bff
 
             self.taglist.append(int(lm.tag))

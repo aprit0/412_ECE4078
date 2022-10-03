@@ -92,8 +92,9 @@ class RRTC:
         self.start_node_list = [self.start]
         self.end_node_list = [self.end]
         while len(self.start_node_list) + len(self.end_node_list) <= self.max_nodes:
-            # print(self.start_node_list)
-            # print(self.end_node_list)
+
+            print('start',len(self.start_node_list))
+            print(len(self.end_node_list))
             # TODO: Complete the planning method ----------------------------------------------------------------
             # 1. Sample and add a node in the start tree
             rand_sample = self.get_random_node()
@@ -131,6 +132,7 @@ class RRTC:
 
                 if self.is_collision_free(nearby_node_2):
                     self.end_node_list.append(nearby_node_2)
+                pass
 
             # 5. Swap start and end trees
             self.end_node_list, self.start_node_list = self.start_node_list, self.end_node_list
@@ -461,15 +463,21 @@ if __name__ == "__main__":
     # do a for loop for all markers including fruits
     aruco_list = []
     fruits = []
+    f_id = {'apple':0,
+            'lemon':1,
+            'orange':2,
+            'pear':3,
+            'strawberry':4}
     for i in range(len(fruits_true_pos)):
-        item = item_in_map(fruits_list[i], fruits_true_pos[i])
+        item = item_in_map(f_id[fruits_list[i]], fruits_true_pos[i])
         fruits.append(item)
-    kalman_filter.add_landmarks(fruits, 0)  # will add known
+    print('fruits', fruits[0].coordinates, fruits[0].tag)
+    kalman_filter.add_landmarks(fruits)  # will add known
     for i in range(len(aruco_true_pos)):
         item = item_in_map(str(i), aruco_true_pos[i])
         aruco_list.append(item)
     aruco_list[0].tag = str(10)
-    kalman_filter.add_landmarks(aruco_list, 0)  # will add known
+    kalman_filter.add_landmarks(aruco_list)  # will add known
     # print(kalman_filter.markers)
     # print(kalman_filter.taglist)
     # print(kalman_filter.P)
@@ -477,23 +485,31 @@ if __name__ == "__main__":
     # The following code is only a skeleton code the semi-auto fruit searching task
     # implement RRT, loop is for the number of fruits
 
-    start = [0, 0]
-    goal = [fruits[0].coordinates[0][0], fruits[0].coordinates[1][0]]
+    start = [0.3, 0.3]
+    g_offset = 0.7
+    goal = [fruits[0].coordinates[0][0] - g_offset, fruits[0].coordinates[1][0] ]#- g_offset]
     obstacles_aruco = []
     for item in aruco_list:
         obstacles_aruco.append(Circle(item.coordinates[0], item.coordinates[1]))
     expand_dis = 0.4
     print(start)
     print(goal)
-    rrt = RRTC(start=start, goal=goal, width=1, height=1, obstacle_list=obstacles_aruco, expand_dis=expand_dis,
+    rrt = RRTC(start=start, goal=goal, width=2.4, height=2.4, obstacle_list=obstacles_aruco, expand_dis=expand_dis,
                path_resolution=0.2)
-    route = rrt.planning()
+    try:
+        route = rrt.planning()
+    except Exception as e:
+        print(e)
     print(route)
     input("press enter to start moving:...")
     for i in range(len(route) - 2, -1, -1):
+        print('begin')
         destination = route[i]
         waypoint = [destination[0], destination[1]]
-        drive_to_point(waypoint, robot_pose, ppi, kalman_filter, markers_matrix)
+        try:
+            drive_to_point(waypoint, robot_pose, ppi, kalman_filter, markers_matrix)
+        except Exception as e:
+            print(e)
         # estimate the robot's pose
         robot_pose = get_robot_pose(kalman_filter)
         print("Finished driving to waypoint: {}; New robot pose: {}".format(waypoint, robot_pose))
