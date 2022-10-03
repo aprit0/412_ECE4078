@@ -45,7 +45,6 @@ class Circle:
             return True
         return False
 
-ppi = PenguinPi()
 
 class RRTC:
     """
