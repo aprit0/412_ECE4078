@@ -12,3 +12,23 @@ For each lab milestone, you will submit your code on Moodle. Each group needs to
 - **Lab 04** is on Fri 10am-1pm in Woodside Building room 303. Demonstrators are Liam & Morris
 - **Lab 05** is on Fri 1pm-4pm in Woodside Building room 303. Demonstrators are Tin & Richard
 - **Lab 06** is on Wed 12pm-3pm on Zoom (join this [link](https://monash.zoom.us/j/84564135587?pwd=T3owY2FTWDd3RXhzcjJTK3hQOG5aQT09)). Demonstrator is Rachel
+
+# W3-5 
+```
+python3 -m pip install machinevision-toolbox-python spatialmath-python==0.8.9 opencv-contrib-python==4.1.2.30 matplotlib 
+cd ~/catkin_ws/ 
+source ~/catkin_ws/devel/setup.bash 
+catkin_make 
+```
+
+Test: 
+``` 
+import cv2 
+from cv2 import aruco 
+from machinevisiontoolbox import Image, CentralCamera 
+```
+
+# W6-7 
+```
+pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cpu 
+```
