@@ -455,7 +455,7 @@ if __name__ == "__main__":
     #    scale /= 2
     #    #pass
     robot = Robot(baseline, scale, intrinsic, dist_coeffs)
-    kalman_filter = EKF(robot) # Occupancy list 
+    kalman_filter = EKF(robot) # Occupancy list
     markers_matrix = aruco.aruco_detector(robot, marker_length=0.07)
 
     # since we know where the markes is, chaneg the self.markers in the ekf kalman_filter
