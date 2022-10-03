@@ -7,8 +7,8 @@ import cv2
 
 class PenguinPi:
     def __init__(self, ip, port):
-        self.ip = ip
-        self.port = port
+        self.ip = ip#'ASUS-AP'
+        self.port = port#'43011'
         self.wheel_vel = [0, 0]
 
     ##########################################

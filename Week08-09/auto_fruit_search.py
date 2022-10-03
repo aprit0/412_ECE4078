@@ -375,7 +375,7 @@ def drive_to_point(waypoint, robot_pose, ppi, kalman, aruco_marks):
     update_slam(drive_meas, aruco_marks, ppi, kalman)
     print('state: ', kalman.robot.state.flatten())
 
-    time.sleep(3)
+    time.sleep(1)
 
     # after turning, drive straight to the waypoint
     drive_time = dist_to_travel / (drive_speed * scale)
@@ -506,11 +506,12 @@ if __name__ == "__main__":
         print('begin')
         destination = route[i]
         waypoint = [destination[0], destination[1]]
-        try:
-            drive_to_point(waypoint, robot_pose, ppi, kalman_filter, markers_matrix)
-        except Exception as e:
-            print(e)
+        # try:
+        drive_to_point(waypoint, robot_pose, ppi, kalman_filter, markers_matrix)
+        # except Exception as e:
+            # print(e)
         # estimate the robot's pose
+        print('get pose')
         robot_pose = get_robot_pose(kalman_filter)
         print("Finished driving to waypoint: {}; New robot pose: {}".format(waypoint, robot_pose))
 
