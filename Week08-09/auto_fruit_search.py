@@ -361,7 +361,7 @@ def drive_to_point(waypoint, robot_pose, ppi, kalman, aruco_marks):
 
     print("Turning for {:.2f} seconds".format(turn_time))
 
-    # since we want slam to run simultaneously  with drive, implement slam update in [[i set velocit]]
+    # since we want slam to run simultaneously  with drive, implement slam update in [[i set velocity]]
     while turn_time > 10:  # to update slam every one sec
         lv, rv = ppi.set_velocity([0, dir], turning_tick=turn_speed,
                                   time=1)  # set_velocity([0, dir], turning_tick=wheel_vel, time=turn_time)
@@ -419,60 +419,90 @@ class item_in_map:
         self.tag = name
         self.coordinates = np.array([[measurement[0]],[measurement[1]]])
 
+
 # main loop
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Fruit searching")
     parser.add_argument("--map", type=str, default='M4_true_map.txt')
     parser.add_argument("--ip", metavar='', type=str, default='localhost')
     parser.add_argument("--port", metavar='', type=int, default=40000)
-    parser.add_argument("--calib_dir", type=str, default="calibration/param/")
-    parser.add_argument("--save_data", action='store_true')
-    parser.add_argument("--play_data", action='store_true')
-    parser.add_argument("--ckpt", default='network/scripts/model/model.best.pth')
     args, _ = parser.parse_known_args()
 
-    operate = Operate(args)
-    ppi = PenguinPi(args.ip,args.port)
-    # ppi = operate.pibot
+    ppi = PenguinPi(args.ip, args.port)
 
     # read in the true map
     fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
     search_list = read_search_list()
     print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
 
-    waypoint = [0.0,0.0]
-    robot_pose = [0.0,0.0,0.0]
+    print('aruco: ', aruco_true_pos)
+
+    # the needed parameters
+    fileS = "calibration/param_simulation/scale.txt"
+    scale = np.loadtxt(fileS, delimiter=',')
+    fileB = "calibration/param_simulation/baseline.txt"
+    baseline = np.loadtxt(fileB, delimiter=',')
+    fileI = "calibration/param_simulation/intrinsic.txt"
+    intrinsic = np.loadtxt(fileI, delimiter=',')
+    fileD = "calibration/param_simulation/distCoeffs.txt"
+    dist_coeffs = np.loadtxt(fileD, delimiter=',')
+
+    waypoint = [0.0, 0.0]
+    robot_pose = [0.0, 0.0, 0.0]
+
+    # intialise slam
+    # if args.ip == 'localhost':
+    #    scale /= 2
+    #    #pass
+    robot = Robot(baseline, scale, intrinsic, dist_coeffs)
+    kalman_filter = EKF(robot) # Occupancy list 
+    markers_matrix = aruco.aruco_detector(robot, marker_length=0.07)
+
+    # since we know where the markes is, chaneg the self.markers in the ekf kalman_filter
+    # do a for loop for all markers including fruits
+    aruco_list = []
+    fruits = []
+    for i in range(len(fruits_true_pos)):
+        item = item_in_map(fruits_list[i], fruits_true_pos[i])
+        fruits.append(item)
+    kalman_filter.add_landmarks(fruits, 0)  # will add known
+    for i in range(len(aruco_true_pos)):
+        item = item_in_map(str(i), aruco_true_pos[i])
+        aruco_list.append(item)
+    aruco_list[0].tag = str(10)
+    kalman_filter.add_landmarks(aruco_list, 0)  # will add known
+    # print(kalman_filter.markers)
+    # print(kalman_filter.taglist)
+    # print(kalman_filter.P)
 
     # The following code is only a skeleton code the semi-auto fruit searching task
-    while True:
-        # enter the waypoints
-        # instead of manually enter waypoints, you can get coordinates by clicking on a map, see camera_calibration.py
-        x,y = 0.0,0.0
-        x = input("X coordinate of the waypoint: ")
-        try:
-            x = float(x)
-        except ValueError:
-            print("Please enter a number.")
-            continue
-        y = input("Y coordinate of the waypoint: ")
-        try:
-            y = float(y)
-        except ValueError:
-            print("Please enter a number.")
-            continue
+    # implement RRT, loop is for the number of fruits
 
+    start = [0, 0]
+    goal = [fruits[0].coordinates[0][0], fruits[0].coordinates[1][0]]
+    obstacles_aruco = []
+    for item in aruco_list:
+        obstacles_aruco.append(Circle(item.coordinates[0], item.coordinates[1]))
+    expand_dis = 0.4
+    print(start)
+    print(goal)
+    rrt = RRTC(start=start, goal=goal, width=1, height=1, obstacle_list=obstacles_aruco, expand_dis=expand_dis,
+               path_resolution=0.2)
+    route = rrt.planning()
+    print(route)
+    input("press enter to start moving:...")
+    for i in range(len(route) - 2, -1, -1):
+        destination = route[i]
+        waypoint = [destination[0], destination[1]]
+        drive_to_point(waypoint, robot_pose, ppi, kalman_filter, markers_matrix)
         # estimate the robot's pose
-        robot_pose = get_robot_pose()
-
-        # robot drives to the waypoint
-        waypoint = [x,y]
-        drive_to_point(waypoint,robot_pose)
-        print("Finished driving to waypoint: {}; New robot pose: {}".format(waypoint,robot_pose))
+        robot_pose = get_robot_pose(kalman_filter)
+        print("Finished driving to waypoint: {}; New robot pose: {}".format(waypoint, robot_pose))
 
         # exit
         ppi.set_velocity([0, 0])
-        uInput = input("Add a new waypoint? [Y/N]")
-        if uInput == 'N':
-            break
+        print('stopping for 3 seconds')
+        time.sleep(3)
+
 
 
