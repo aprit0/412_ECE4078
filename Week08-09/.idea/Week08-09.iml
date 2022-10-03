@@ -2,7 +2,7 @@
 <module type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$" />
-    <orderEntry type="inheritedJdk" />
+    <orderEntry type="jdk" jdkName="Python 3.8 (Assignment_1)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="Week06-07" />
     <orderEntry type="module" module-name="Week03-05" />
@@ -10,5 +10,6 @@
   <component name="PyDocumentationSettings">
     <option name="format" value="EPYTEXT" />
     <option name="myDocStringFormat" value="Epytext" />
+    <option name="renderExternalDocumentation" value="true" />
   </component>
 </module>
