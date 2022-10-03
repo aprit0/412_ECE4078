@@ -45,7 +45,6 @@ class Circle:
             return True
         return False
 
-ppi = PenguinPi()
 
 class RRTC:
     """
@@ -438,13 +437,13 @@ if __name__ == "__main__":
     print('aruco: ', aruco_true_pos)
 
     # the needed parameters
-    fileS = "calibration/param_simulation/scale.txt"
+    fileS = "calibration/param/scale.txt"
     scale = np.loadtxt(fileS, delimiter=',')
-    fileB = "calibration/param_simulation/baseline.txt"
+    fileB = "calibration/param/baseline.txt"
     baseline = np.loadtxt(fileB, delimiter=',')
-    fileI = "calibration/param_simulation/intrinsic.txt"
+    fileI = "calibration/param/intrinsic.txt"
     intrinsic = np.loadtxt(fileI, delimiter=',')
-    fileD = "calibration/param_simulation/distCoeffs.txt"
+    fileD = "calibration/param/distCoeffs.txt"
     dist_coeffs = np.loadtxt(fileD, delimiter=',')
 
     waypoint = [0.0, 0.0]
