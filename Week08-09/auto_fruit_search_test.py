@@ -1,4 +1,4 @@
-# M4 - Autonomous fruit searching
+# m4 - autonomous fruit searching
 
 # basic python packages
 import sys, os
@@ -11,50 +11,50 @@ import random
 import math
 from operate06 import *
 
-# Import dependencies and set random seed
+# import dependencies and set random seed
 seed_value = 5
-# 1. Set `python` built-in pseudo-random generator at a fixed value
+# 1. set `python` built-in pseudo-random generator at a fixed value
 random.seed(seed_value)
-# 2. Set `numpy` pseudo-random generator at a fixed value
+# 2. set `numpy` pseudo-random generator at a fixed value
 np.random.seed(seed_value)
 
-
-# import SLAM components
+# import slam components
 sys.path.insert(0, "{}/slam".format(os.getcwd()))
-from slam.ekf import EKF
-from slam.robot import Robot
+from slam.ekf import ekf
+from slam.robot import robot
 import slam.aruco_detector as aruco
 
 # import utility functions
 sys.path.insert(0, "{}/util".format(os.getcwd()))
-from pibot import PenguinPi
+from pibot import penguinpi
 import measure as measure
 
-class Circle:
-    def __init__ (self,c_x, c_y, radius = 0.1):
-        self.center = np.array([c_x,c_y])
+
+class circle:
+    def __init__(self, c_x, c_y, radius=0.1):
+        self.center = np.array([c_x, c_y])
         self.radius = radius
 
-    def is_in_collision_with_points(self,points):
+    def is_in_collision_with_points(self, points):
         dist = []
         for point in points:
             dx = self.center[0] - point[0]
             dy = self.center[1] - point[1]
 
-            dist.append(dx*dx + dy*dy)
-        if np.min(dist) <= self.radius **2:
-            return True
-        return False
+            dist.append(dx * dx + dy * dy)
+        if np.min(dist) <= self.radius ** 2:
+            return true
+        return false
 
 
 class RRTC:
     """
-    Class for RRT planning
+    class for rrt planning
     """
 
-    class Node:
+    class node:
         """
-        RRT Node
+        rrt node
         """
 
         def __init__(self, x, y):
@@ -62,29 +62,29 @@ class RRTC:
             self.y = y
             self.path_x = []
             self.path_y = []
-            self.parent = None
+            self.parent = none
 
-    def __init__(self, start=np.zeros(2), goal=np.array([120, 90]), obstacle_list=None, width=160, height=100,
+    def __init__(self, start=np.zeros(2), goal=np.array([120, 90]), obstacle_list=none, width=160, height=100,
                  expand_dis=3.0, path_resolution=0.5, max_points=200):
         """
-        Setting Parameter
-        start:Start Position [x,y]
-        goal:Goal Position [x,y]
+        setting parameter
+        start:start position [x,y]
+        goal:goal position [x,y]
         obstacle_list: list of obstacle objects
         width, height: search area
         expand_dis: min distance between random node and closest node in rrt to it
         path_resolution: step size to considered when looking for node to expand
         """
-        self.start = self.Node(start[0], start[1])
-        self.end = self.Node(goal[0], goal[1])
+        self.start = self.node(start[0], start[1])
+        self.end = self.node(goal[0], goal[1])
         self.width = width
         self.height = height
         self.expand_dis = expand_dis
         self.path_resolution = path_resolution
         self.max_nodes = max_points
         self.obstacle_list = obstacle_list
-        self.start_node_list = []  # Tree from start
-        self.end_node_list = []  # Tree from end
+        self.start_node_list = []  # tree from start
+        self.end_node_list = []  # tree from end
 
     def planning(self):
         """
@@ -94,15 +94,15 @@ class RRTC:
         self.end_node_list = [self.end]
         while len(self.start_node_list) + len(self.end_node_list) <= self.max_nodes:
 
-            #print('start',len(self.start_node_list))
-            #print(len(self.end_node_list))
-            # TODO: Complete the planning method ----------------------------------------------------------------
-            # 1. Sample and add a node in the start tree
+            # print('start',len(self.start_node_list))
+            # print(len(self.end_node_list))
+            # todo: complete the planning method ----------------------------------------------------------------
+            # 1. sample and add a node in the start tree
             rand_sample = self.get_random_node()
             expansion_id = self.get_nearest_node_index(self.start_node_list, rand_sample)
             expansion_node = self.start_node_list[expansion_id]
 
-            # 2. Check whether trees can be connected, check if the sampled node is less than expand_dis
+            # 2. check whether trees can be connected, check if the sampled node is less than expand_dis
             # check for colission but 'expand using steer'to set up the path then add after checking collision status
             nearby_node = self.steer(expansion_node, rand_sample, self.expand_dis)
 
@@ -115,19 +115,19 @@ class RRTC:
 
                 check_dist, _ = self.calc_distance_and_angle(end_expand_node, nearby_node)
 
-                # 3. Add the node that connects the trees and generate the path
+                # 3. add the node that connects the trees and generate the path
                 if check_dist < self.expand_dis:  # true path is found
                     final_path = self.steer(end_expand_node, nearby_node, self.expand_dis)
                     if self.is_collision_free(final_path):
-                        # Note: It is important that you return path found as:
+                        # note: it is important that you return path found as:
                         self.end_node_list.append(final_path)
                         return self.generate_final_course(len(self.start_node_list) - 1, len(self.end_node_list) - 1)
-                        # 4. Sample and add a node in the end tree
+                        # 4. sample and add a node in the end tree
                 rand_sample_2 = self.get_random_node()
                 expansion_2 = self.get_nearest_node_index(self.end_node_list, rand_sample_2)
                 expansion_node_2 = self.end_node_list[expansion_2]
 
-                # Check whether trees can be connected
+                # check whether trees can be connected
                 # check for colission but 'expand using steer'to set up the path then add after checking collision status
                 nearby_node_2 = self.steer(expansion_node_2, rand_sample_2, self.expand_dis)
 
@@ -135,19 +135,19 @@ class RRTC:
                     self.end_node_list.append(nearby_node_2)
                 pass
 
-            # 5. Swap start and end trees
+            # 5. swap start and end trees
             self.end_node_list, self.start_node_list = self.start_node_list, self.end_node_list
-        # ENDTODO ----------------------------------------------------------------------------------------------
-        return None  # cannot find path
+        # endtodo ----------------------------------------------------------------------------------------------
+        return none  # cannot find path
 
-    # ------------------------------DO NOT change helper methods below ----------------------------
+    # ------------------------------do not change helper methods below ----------------------------
     def steer(self, from_node, to_node, extend_length=float("inf")):
         """
-        Given two nodes from_node, to_node, this method returns a node new_node such that new_node
+        given two nodes from_node, to_node, this method returns a node new_node such that new_node
         is “closer” to to_node than from_node is.
         """
 
-        new_node = self.Node(from_node.x, from_node.y)
+        new_node = self.node(from_node.x, from_node.y)
         d, theta = self.calc_distance_and_angle(new_node, to_node)
         cos_theta, sin_theta = np.cos(theta), np.sin(theta)
 
@@ -157,10 +157,10 @@ class RRTC:
         if extend_length > d:
             extend_length = d
 
-        # How many intermediate positions are considered between from_node and to_node
+        # how many intermediate positions are considered between from_node and to_node
         n_expand = math.floor(extend_length / self.path_resolution)
 
-        # Compute all intermediate positions
+        # compute all intermediate positions
         for _ in range(n_expand):
             new_node.x += self.path_resolution * cos_theta
             new_node.y += self.path_resolution * sin_theta
@@ -177,36 +177,36 @@ class RRTC:
 
     def is_collision_free(self, new_node):
         """
-        Determine if nearby_node (new_node) is in the collision-free space.
+        determine if nearby_node (new_node) is in the collision-free space.
         """
-        if new_node is None:
-            return True
-        points = np.vstack((new_node.path_x, new_node.path_y)).T
+        if new_node is none:
+            return true
+        points = np.vstack((new_node.path_x, new_node.path_y)).t
         for obs in self.obstacle_list:
             in_collision = obs.is_in_collision_with_points(points)
             if in_collision:
-                return False
+                return false
 
-        return True  # safe
+        return true  # safe
 
     def generate_final_course(self, start_mid_point, end_mid_point):
         """
-        Reconstruct path from start to end node
+        reconstruct path from start to end node
         """
-        # First half
+        # first half
 
         node = self.start_node_list[start_mid_point]
         path = []
-        while node.parent is not None:
+        while node.parent is not none:
             path.append([node.x, node.y])
             node = node.parent
         path.append([node.x, node.y])
 
-        # Other half
+        # other half
         node = self.end_node_list[end_mid_point]
         path = path[::-1]
         other_sect = []
-        while node.parent is not None:
+        while node.parent is not none:
             other_sect.append([node.x, node.y])
             path.append([node.x, node.y])
             node = node.parent
@@ -225,13 +225,13 @@ class RRTC:
     def get_random_node(self):
         x = self.width * np.random.random_sample()
         y = self.height * np.random.random_sample()
-        rnd = self.Node(x, y)
+        rnd = self.node(x, y)
         return rnd
 
     @staticmethod
     def get_nearest_node_index(node_list, rnd_node):
-        # Compute Euclidean disteance between rnd_node and all nodes in tree
-        # Return index of closest element
+        # compute euclidean disteance between rnd_node and all nodes in tree
+        # return index of closest element
         dlist = [(node.x - rnd_node.x) ** 2 + (node.y - rnd_node.y) ** 2 for node in node_list]
         minind = dlist.index(min(dlist))
         return minind
@@ -244,14 +244,15 @@ class RRTC:
         theta = math.atan2(dy, dx)
         return d, theta
 
+
 def read_true_map(fname):
-    """Read the ground truth map and output the pose of the ArUco markers and 3 types of target fruit to search
+    """read the ground truth map and output the pose of the aruco markers and 3 types of target fruit to search
 
     @param fname: filename of the map
     @return:
         1) list of target fruits, e.g. ['apple', 'pear', 'lemon']
         2) locations of the target fruits, [[x1, y1], ..... [xn, yn]]
-        3) locations of ArUco markers in order, i.e. pos[9, :] = position of the aruco10_0 marker
+        3) locations of aruco markers in order, i.e. pos[9, :] = position of the aruco10_0 marker
     """
     with open(fname, 'r') as fd:
         gt_dict = json.load(fd)
@@ -261,15 +262,15 @@ def read_true_map(fname):
 
         # remove unique id of targets of the same type
         for key in gt_dict:
-            x = np.round(gt_dict[key]['x'], 1)  # Reading every x coordinates
-            y = np.round(gt_dict[key]['y'], 1)  # Reading every y coordinates
+            x = np.round(gt_dict[key]['x'], 1)  # reading every x coordinates
+            y = np.round(gt_dict[key]['y'], 1)  # reading every y coordinates
 
             if key.startswith('aruco'):
                 if key.startswith('aruco10'):
                     aruco_true_pos[9][0] = x
                     aruco_true_pos[9][1] = y
                 else:
-                    marker_id = int(key[5]) # Giving ID to ARUCO markers
+                    marker_id = int(key[5])  # giving id to aruco markers
                     aruco_true_pos[marker_id][0] = x
                     aruco_true_pos[marker_id][1] = y
             else:
@@ -283,7 +284,7 @@ def read_true_map(fname):
 
 
 def read_search_list():
-    """Read the search order of the target fruits
+    """read the search order of the target fruits
 
     @return: search order of the target fruits
     """
@@ -298,14 +299,14 @@ def read_search_list():
 
 
 def print_target_fruits_pos(search_list, fruit_list, fruit_true_pos):
-    """Print out the target fruits' pos in the search order
+    """print out the target fruits' pos in the search order
 
     @param search_list: search order of the fruits
     @param fruit_list: list of target fruits
     @param fruit_true_pos: positions of the target fruits
     """
 
-    print("Search order:")
+    print("search order:")
     n_fruit = 1
     for fruit in search_list:
         for i in range(3):
@@ -317,7 +318,7 @@ def print_target_fruits_pos(search_list, fruit_list, fruit_true_pos):
         n_fruit += 1
 
 
-# Waypoint navigation
+# waypoint navigation
 # the robot automatically drives to a given [x,y] coordinate
 # additional improvements:
 # you may use different motion model parameters for robot driving on its own or driving while pushing a fruit
@@ -330,8 +331,8 @@ def drive_to_point(waypoint, robot_pose, ppi, kalman, aruco_marks):
     print('scale: ', scale)
 
     ####################################################
-    # TODO: replace with your codes to make the robot drive to the waypoint
-    # One simple strategy is to first turn on the spot facing the waypoint,
+    # todo: replace with your codes to make the robot drive to the waypoint
+    # one simple strategy is to first turn on the spot facing the waypoint,
     # then drive straight to the way point
 
     # waypoint: [x,y]
@@ -361,18 +362,18 @@ def drive_to_point(waypoint, robot_pose, ppi, kalman, aruco_marks):
         dir = -1
         turn_time = np.abs(turn_time)
 
-    print("Turning for {:.2f} seconds".format(turn_time))
+    print("turning for {:.2f} seconds".format(turn_time))
 
     # since we want slam to run simultaneously  with drive, implement slam update in [[i set velocity]]
     while turn_time > 10:  # to update slam every one sec
         lv, rv = ppi.set_velocity([0, dir], turning_tick=turn_speed,
                                   time=1)  # set_velocity([0, dir], turning_tick=wheel_vel, time=turn_time)
-        drive_meas = measure.Drive(lv, rv, 1)  # this is our drive message to update the slam
+        drive_meas = measure.drive(lv, rv, 1)  # this is our drive message to update the slam
         update_slam(drive_meas, aruco_marks, ppi, kalman)
         turn_time -= 1
     lv, rv = ppi.set_velocity([0, dir], turning_tick=turn_speed,
                               time=turn_time)  # set_velocity([0, dir], turning_tick=wheel_vel, time=turn_time)
-    drive_meas = measure.Drive(lv, rv, turn_time)  # this is our drive message to update the slam
+    drive_meas = measure.drive(lv, rv, turn_time)  # this is our drive message to update the slam
     update_slam(drive_meas, aruco_marks, ppi, kalman)
     print('state: ', kalman.robot.state.flatten())
 
@@ -380,27 +381,27 @@ def drive_to_point(waypoint, robot_pose, ppi, kalman, aruco_marks):
 
     # after turning, drive straight to the waypoint
     drive_time = dist_to_travel / (drive_speed * scale)
-    print("Driving for {:.2f} seconds".format(drive_time))
+    print("driving for {:.2f} seconds".format(drive_time))
     while drive_time > 10:
         lv, rv = ppi.set_velocity([1, 0], tick=drive_speed, time=1)
-        drive_meas = measure.Drive(lv, rv, 1)  # this is our drive message to update the slam
+        drive_meas = measure.drive(lv, rv, 1)  # this is our drive message to update the slam
         update_slam(drive_meas, aruco_marks, ppi, kalman)
         drive_time -= 1
         time.sleep(1)
     lv, rv = ppi.set_velocity([1, 0], tick=drive_speed,
                               time=drive_time)  # set_velocity([0, dir], turning_tick=wheel_vel, time=turn_time)
-    drive_meas = measure.Drive(lv, rv, drive_time)  # this is our drive message to update the slam
+    drive_meas = measure.drive(lv, rv, drive_time)  # this is our drive message to update the slam
     update_slam(drive_meas, aruco_marks, ppi, kalman)
     ####################################################
     print('state: ', kalman.robot.state.flatten())
 
-    print("Arrived at [{}, {}]".format(waypoint[0], waypoint[1]))
+    print("arrived at [{}, {}]".format(waypoint[0], waypoint[1]))
 
 
 def get_robot_pose(kalman):
     ####################################################
-    # TODO: replace with your codes to estimate the phose of the robot
-    # We STRONGLY RECOMMEND you to use your SLAM code from M2 here
+    # todo: replace with your codes to estimate the phose of the robot
+    # we strongly recommend you to use your slam code from m2 here
 
     # update the robot pose [x,y,theta]
     # robot_pose = [0.0,0.0,0.0] # replace with your calculation
@@ -409,14 +410,16 @@ def get_robot_pose(kalman):
 
     return robot_pose
 
+
 def update_slam(drive_meas, aruco, pibot, kalman):
     image = pibot.get_image()
     lms, aruco_img = aruco.detect_marker_positions(image)
     kalman.predict(drive_meas)
-    kalman.add_landmarks(lms) #will only add if something new is seen
+    kalman.add_landmarks(lms)  # will only add if something new is seen
     kalman.update(lms)
 
-# Aiden 4191######################################################################
+
+# aiden 4191######################################################################
 
 def calculate_angle_from_goal(pose, goal):
     pose = [i[0] for i in pose]
@@ -425,61 +428,117 @@ def calculate_angle_from_goal(pose, goal):
     angle_between_points = lambda pose, goal: np.arctan2(goal[1] - pose[1], goal[0] - pose[0])
     angle_to_rotate = angle_between_points(pose, goal) - pose[2]
     print("angle-->", angle_to_rotate)
-    # Ensures minimum rotation
+    # ensures minimum rotation
     if angle_to_rotate < -np.pi:
         angle_to_rotate += 2 * np.pi
     if angle_to_rotate > np.pi:
         angle_to_rotate -= 2 * np.pi
     return angle_to_rotate
 
-def main(waypoint, ppi, aruco_markers, goal):
-    '''
-    Aim: take in waypoint, travel to waypoint
-    '''
-    # while True:
-    dist_from_goal = 0.05
-    dist_between_points = lambda pose, goal: np.linalg.norm(pose - goal)
-    angle_to_rotate = calculate_angle_from_goal(operate.ekf.robot.state[:3], goal)
-    dist_to_goal = dist_between_points(operate.ekf.robot.state[:3], goal)
-    print(operate.ekf.robot.state[0], operate.ekf.robot.state[1], math.degrees(operate.ekf.robot.state[2]))
-    print('Dist2Goal: {:.3f} || Ang2Goal: {:.3f}'.format(dist_to_goal, math.degrees(angle_to_rotate)))
-    if dist_to_goal > dist_from_goal:
-        # Check if we need to rotate or drive straight
-        drive(waypoint, ppi, aruco_markers)
-    else:
-        # Waypoint reached
-        print("Final Destination")
 
-def drive(waypoint, ppi, aruco_markers):
-    # turning
-    dir = 1
-    turn_speed = 20
-    drive_speed = 50
-    dist_to_waypoint = 0
-    scale = operate.ekf.robot.wheels_scale
-    lv, rv = ppi.set_velocity([0, dir], turning_tick=turn_speed,
-                              time=1)  # set_velocity([0, dir], turning_tick=wheel_vel, time=turn_time)
-    drive_meas = measure.Drive(lv, rv, 1)  # this is our drive message to update the slam
-    update_slam(drive_meas, aruco_markers, ppi, operate.ekf)
+class controller:
+    def __init__(self, operate):
+        # Goal is the immediate destination, waypoints is the list of destinations
+        self.dist_between_points = lambda pose, goal: math.dist(pose, goal)
+        self.angle_between_points = lambda pose, goal: np.arctan2(goal[1] - pose[1], goal[0] - pose[0])
 
-    time.sleep(1)
+        # variables
+        self.operate = operate
+        self.ekf = operate.ekf
+        self.aruco = operate.aruco_det
+        self.get_pose = lambda: [i[0] for i in self.ekf.robot[:3]]
+        self.pose = self.get_pose()  # x, y, theta
+        self.goal = goal  # x, y
+        self.state = {'Turn': 0}
+        self.waypoints = []
+        self.goal = [0., 0.]
 
-    #drive staright to waypoint
-    pos_dif = [get_robot_pose(operate.ekf)[0] - waypoint[0], get_robot_pose(operate.ekf)[1] - waypoint[1]]
-    dist = np.sqrt(pos_dif[0] ** 2 + pos_dif[1] ** 2)
-    dist_to_travel = dist - dist_to_waypoint
-    drive_time = dist_to_travel / (drive_speed * scale)
-    lv, rv = ppi.set_velocity([1, 0], tick=drive_speed, time=1)
-    drive_meas = measure.Drive(lv, rv, 1)  # this is our drive message to update the slam
-    update_slam(drive_meas, aruco_markers, ppi, operate.ekf)
-    time.sleep(1)
+
+        # Params
+        self.dist_from_goal = 0.05
+        self.max_angle = np.pi / 18  # Maximum offset angle from goal before correction
+        self.min_angle = self.max_angle * 0.5  # Maximum offset angle from goal after correction
+        self.goal_reached = False
+        self.look_ahead = 0.2
+
+    def get_path(self, path):
+        self.waypoints = path
+        while (len(self.waypoints) > 1 and self.dist_between_points(self.pose[:2],
+                                                                    self.waypoints[0]) < self.look_ahead):
+            print('way len', len(self.waypoints))
+            self.waypoints.pop(0)
+
+        self.goal = self.waypoints[0]
+        self.main()
+
+    def main(self):
+        '''
+        Aim: take in waypoint, travel to waypoint
+        '''
+        while not self.goal_reached:
+            angle_to_rotate = self.calculate_angle_from_goal(operate.ekf.robot.state[:3], goal)
+            dist_to_goal = self.dist_between_points(operate.ekf.robot.state[:3], goal)
+            print('pose, goal', self.pose, self.goal)
+            print('Dist2Goal: {:.3f} || Ang2Goal: {:.3f}'.format(dist_to_goal, math.degrees(angle_to_rotate)))
+            if dist_to_goal > self.dist_from_goal:
+                # Check if we need to rotate or drive straight
+                if (self.state['Turn'] == 0 and abs(angle_to_rotate) > self.max_angle) or self.state['Turn'] == 1:
+                    # Drive curvy
+                    self.state['Turn'] = 1
+                    if abs(angle_to_rotate) < self.min_angle:
+                        self.state['Turn'] = 0
+                    self.drive(ang_to_rotate=angle_to_rotate)
+                elif self.state['Turn'] == 0:
+                    # Drive straight
+                    self.drive(ang_to_rotate=0)
+                else:
+                    print('BOI YO DRIVING BE SHITE', self.state['Turn'], angle_to_rotate)
+            else:
+                # Waypoint reached
+                if len(self.waypoints) == 1 or len(self.waypoints) == 0:
+                    # Destination reached
+                    print('Goal achieved')
+                    self.drive(0, 0)
+                    self.goal_reached = True
+                else:
+                    # look for next waypoint
+                    self.waypoints.pop(0)
+                    self.goal = self.waypoints[0]
+
+
+    def drive(self, ang_to_rotate=0, value=0.5):
+        curve = 0.0
+        direction = np.sign(ang_to_rotate)
+        turn_speed = 20
+        drive_speed = 50
+
+        if direction == 0:
+            # drive straight
+            lv, rv = ppi.set_velocity([1, 0], tick=drive_speed, time=1)
+        else:
+            # turn
+            lv, rv = ppi.set_velocity([0, dir], turning_tick=turn_speed,
+                                      time=1)  # set_velocity([0, dir], turning_tick=wheel_vel, time=turn_time)
+        drive_meas = measure.Drive(lv, rv, 1)  # this is our drive message to update the slam
+        update_slam(drive_meas, self.aruco, self.operate.pibot, self.ekf)
+        time.sleep(1)
+
+    def calculate_angle_from_goal(self):
+        angle_to_rotate = self.angle_between_points(self.pose, self.goal) - self.pose[2]
+        # Ensures minimum rotation
+        if angle_to_rotate < -np.pi:
+            angle_to_rotate += 2 * np.pi
+        if angle_to_rotate > np.pi:
+            angle_to_rotate -= 2 * np.pi
+        return angle_to_rotate
+
 
 #####################################################################################################
 
 class item_in_map:
-    def __init__(self,name, measurement):
+    def __init__(self, name, measurement):
         self.tag = name
-        self.coordinates = np.array([[measurement[0]],[measurement[1]]])
+        self.coordinates = np.array([[measurement[0]], [measurement[1]]])
 
 
 # main loop
@@ -556,37 +615,36 @@ if __name__ == "__main__":
     search_list = read_search_list()
     print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
 
-
     # the needed parameters
-    #fileS = "calibration/param/scale.txt"
-    #scale = np.loadtxt(fileS, delimiter=',')
-    #fileB = "calibration/param/baseline.txt"
-    #baseline = np.loadtxt(fileB, delimiter=',')
-    #fileI = "calibration/param/intrinsic.txt"
-    #intrinsic = np.loadtxt(fileI, delimiter=',')
-    #fileD = "calibration/param/distCoeffs.txt"
-    #dist_coeffs = np.loadtxt(fileD, delimiter=',')
+    # fileS = "calibration/param/scale.txt"
+    # scale = np.loadtxt(fileS, delimiter=',')
+    # fileB = "calibration/param/baseline.txt"
+    # baseline = np.loadtxt(fileB, delimiter=',')
+    # fileI = "calibration/param/intrinsic.txt"
+    # intrinsic = np.loadtxt(fileI, delimiter=',')
+    # fileD = "calibration/param/distCoeffs.txt"
+    # dist_coeffs = np.loadtxt(fileD, delimiter=',')
 
-    #waypoint = [0.0, 0.0]
-    #robot_pose = [0.0, 0.0, 0.0]
+    # waypoint = [0.0, 0.0]
+    # robot_pose = [0.0, 0.0, 0.0]
 
     # intialise slam
     # if args.ip == 'localhost':
     #    scale /= 2
     #    #pass
     # robot = Robot(baseline, scale, intrinsic, dist_coeffs)
-    #operate.ekf = operate.ekf # Occupancy list
-    #operate.aruco_det = operate.aruco_det
+    # operate.ekf = operate.ekf # Occupancy list
+    # operate.aruco_det = operate.aruco_det
 
     # since we know where the markes is, chaneg the self.markers in the ekf operate.ekf
     # do a for loop for all markers including fruits
     aruco_list = []
     fruits = []
-    f_id = {'apple':0,
-            'lemon':1,
-            'orange':2,
-            'pear':3,
-            'strawberry':4}
+    f_id = {'apple': 0,
+            'lemon': 1,
+            'orange': 2,
+            'pear': 3,
+            'strawberry': 4}
     f_dict = {}
     for i in range(len(fruits_true_pos)):
         item = item_in_map(f_id[fruits_list[i]], fruits_true_pos[i])
@@ -599,21 +657,21 @@ if __name__ == "__main__":
         aruco_list.append(item)
     aruco_list[0].tag = str(10)
     operate.ekf.add_landmarks(aruco_list)  # will add known
-    #print(operate.ekf.markers)
-    #print(operate.ekf.taglist)
-    #print(operate.ekf.P)
+    # print(operate.ekf.markers)
+    # print(operate.ekf.taglist)
+    # print(operate.ekf.P)
 
     # The following code is only a skeleton code the semi-auto fruit searching task
     # implement RRT, loop is for the number of fruits
 
-    start = list(operate.ekf.robot.state[0:2,:])
+    start = list(operate.ekf.robot.state[0:2, :])
     g_offset = 0.3
     # goal = [fruits[0].coordinates[0][0] - g_offset, fruits[0].coordinates[1][0] ]#- g_offset]
-    goal = [f_dict[i] - [g_offset,g_offset] for i in search_list]
+    goal = [f_dict[i] - [g_offset, g_offset] for i in search_list]
     obstacles_aruco = []
-    lms_xy = operate.ekf.markers[:2,:]
-    for i in range(len(operate.ekf.markers[0,:])):
-        obstacles_aruco.append(Circle(lms_xy[0,i], lms_xy[1,i]))
+    lms_xy = operate.ekf.markers[:2, :]
+    for i in range(len(operate.ekf.markers[0, :])):
+        obstacles_aruco.append(Circle(lms_xy[0, i], lms_xy[1, i]))
     expand_dis = 0.4
     print("obstacles:", obstacles_aruco)
     print(start)
@@ -626,12 +684,13 @@ if __name__ == "__main__":
     #     print(e)
     print(route)
     input("press enter to start moving:...")
-    for i in range(len(route) - 2, -1, -1):
-        print('begin')
-        destination = route[i]
-        waypoint = [destination[0], destination[1]]
-        main(waypoint, ppi, operate.aruco_det, goal[0])
-    
+    # for i in range(len(route) - 2, -1, -1):
+    #     print('begin')
+    #     destination = route[i]
+    #     waypoint = [destination[0], destination[1]]
+    controller(operate, route)
+    controller.get_path()
+
     # for i in range(len(route) - 2, -1, -1):
     #     print('begin')
     #     destination = route[i]
@@ -650,6 +709,3 @@ if __name__ == "__main__":
     #     ppi.set_velocity([0, 0])
     #     print('stopping for 3 seconds')
     #     time.sleep(3)
-
-
-

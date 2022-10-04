@@ -50,7 +50,7 @@ class Operate:
             self.data = dh.DatasetWriter('record')
         else:
             self.data = None
-        self.output = dh.OutputWriter('lab_output')
+        self.output = dh.OutputWriter('test_lab_output')
         self.command = {'motion':[0, 0], 
                         'inference': False,
                         'output': False,
@@ -166,8 +166,7 @@ class Operate:
             else:
                 self.notification = f'No prediction in buffer, save ignored'
             self.command['save_inference'] = False
-
-    # paint the GUI            
+    # paint the GUI
     def draw(self, canvas):
         canvas.blit(self.bg, (0, 0))
         text_colour = (220, 220, 220)
@@ -301,7 +300,7 @@ if __name__ == "__main__":
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
     parser.add_argument("--save_data", action='store_true')
     parser.add_argument("--play_data", action='store_true')
-    parser.add_argument("--ckpt", default='network/scripts/model/model.best.pth')
+    parser.add_argument("--ckpt", default='network/scripts/model/model.best2.pth')
     args, _ = parser.parse_known_args()
     
     pygame.font.init() 
