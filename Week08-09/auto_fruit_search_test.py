@@ -9,6 +9,7 @@ import argparse
 import time
 import random
 import math
+from operate06 import *
 
 # Import dependencies and set random seed
 seed_value = 5
@@ -30,7 +31,7 @@ from pibot import PenguinPi
 import measure as measure
 
 class Circle:
-    def __init__ (self,c_x, c_y, radius = 0.3):
+    def __init__ (self,c_x, c_y, radius = 0.1):
         self.center = np.array([c_x,c_y])
         self.radius = radius
 
@@ -93,8 +94,8 @@ class RRTC:
         self.end_node_list = [self.end]
         while len(self.start_node_list) + len(self.end_node_list) <= self.max_nodes:
 
-            print('start',len(self.start_node_list))
-            print(len(self.end_node_list))
+            #print('start',len(self.start_node_list))
+            #print(len(self.end_node_list))
             # TODO: Complete the planning method ----------------------------------------------------------------
             # 1. Sample and add a node in the start tree
             rand_sample = self.get_random_node()
@@ -415,6 +416,66 @@ def update_slam(drive_meas, aruco, pibot, kalman):
     kalman.add_landmarks(lms) #will only add if something new is seen
     kalman.update(lms)
 
+# Aiden 4191######################################################################
+
+def calculate_angle_from_goal(pose, goal):
+    pose = [i[0] for i in pose]
+    print("pose --> ", pose)
+    print("goal -->", goal)
+    angle_between_points = lambda pose, goal: np.arctan2(goal[1] - pose[1], goal[0] - pose[0])
+    angle_to_rotate = angle_between_points(pose, goal) - pose[2]
+    print("angle-->", angle_to_rotate)
+    # Ensures minimum rotation
+    if angle_to_rotate < -np.pi:
+        angle_to_rotate += 2 * np.pi
+    if angle_to_rotate > np.pi:
+        angle_to_rotate -= 2 * np.pi
+    return angle_to_rotate
+
+def main(waypoint, ppi, aruco_markers, goal):
+    '''
+    Aim: take in waypoint, travel to waypoint
+    '''
+    # while True:
+    dist_from_goal = 0.05
+    dist_between_points = lambda pose, goal: np.linalg.norm(pose - goal)
+    angle_to_rotate = calculate_angle_from_goal(operate.ekf.robot.state[:3], goal)
+    dist_to_goal = dist_between_points(operate.ekf.robot.state[:3], goal)
+    print(operate.ekf.robot.state[0], operate.ekf.robot.state[1], math.degrees(operate.ekf.robot.state[2]))
+    print('Dist2Goal: {:.3f} || Ang2Goal: {:.3f}'.format(dist_to_goal, math.degrees(angle_to_rotate)))
+    if dist_to_goal > dist_from_goal:
+        # Check if we need to rotate or drive straight
+        drive(waypoint, ppi, aruco_markers)
+    else:
+        # Waypoint reached
+        print("Final Destination")
+
+def drive(waypoint, ppi, aruco_markers):
+    # turning
+    dir = 1
+    turn_speed = 20
+    drive_speed = 50
+    dist_to_waypoint = 0
+    scale = operate.ekf.robot.wheels_scale
+    lv, rv = ppi.set_velocity([0, dir], turning_tick=turn_speed,
+                              time=1)  # set_velocity([0, dir], turning_tick=wheel_vel, time=turn_time)
+    drive_meas = measure.Drive(lv, rv, 1)  # this is our drive message to update the slam
+    update_slam(drive_meas, aruco_markers, ppi, operate.ekf)
+
+    time.sleep(1)
+
+    #drive staright to waypoint
+    pos_dif = [get_robot_pose(operate.ekf)[0] - waypoint[0], get_robot_pose(operate.ekf)[1] - waypoint[1]]
+    dist = np.sqrt(pos_dif[0] ** 2 + pos_dif[1] ** 2)
+    dist_to_travel = dist - dist_to_waypoint
+    drive_time = dist_to_travel / (drive_speed * scale)
+    lv, rv = ppi.set_velocity([1, 0], tick=drive_speed, time=1)
+    drive_meas = measure.Drive(lv, rv, 1)  # this is our drive message to update the slam
+    update_slam(drive_meas, aruco_markers, ppi, operate.ekf)
+    time.sleep(1)
+
+#####################################################################################################
+
 class item_in_map:
     def __init__(self,name, measurement):
         self.tag = name
@@ -423,43 +484,101 @@ class item_in_map:
 
 # main loop
 if __name__ == "__main__":
+
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--ip", metavar='', type=str, default='localhost')
+    parser.add_argument("--port", metavar='', type=int, default=40000)
+    parser.add_argument("--calib_dir", type=str, default="calibration/param/")
+    parser.add_argument("--save_data", action='store_true')
+    parser.add_argument("--play_data", action='store_true')
+    parser.add_argument("--ckpt", default='network/scripts/model/model.best.pth')
+    args, _ = parser.parse_known_args()
+
+    pygame.font.init()
+    TITLE_FONT = pygame.font.Font('pics/8-BitMadness.ttf', 35)
+    TEXT_FONT = pygame.font.Font('pics/8-BitMadness.ttf', 40)
+
+    width, height = 700, 660
+    canvas = pygame.display.set_mode((width, height))
+    pygame.display.set_caption('ECE4078 2021 Lab')
+    pygame.display.set_icon(pygame.image.load('pics/8bit/pibot5.png'))
+    canvas.fill((0, 0, 0))
+    splash = pygame.image.load('pics/loading.png')
+    pibot_animate = [pygame.image.load('pics/8bit/pibot1.png'),
+                     pygame.image.load('pics/8bit/pibot2.png'),
+                     pygame.image.load('pics/8bit/pibot3.png'),
+                     pygame.image.load('pics/8bit/pibot4.png'),
+                     pygame.image.load('pics/8bit/pibot5.png')]
+    pygame.display.update()
+
+    start = False
+
+    counter = 40
+    while not start:
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                start = True
+        canvas.blit(splash, (0, 0))
+        x_ = min(counter, 600)
+        if x_ < 600:
+            canvas.blit(pibot_animate[counter % 10 // 2], (x_, 565))
+            pygame.display.update()
+            counter += 2
+
+    operate = Operate(args, TITLE_FONT, TEXT_FONT)
+
+    while not operate.quit:
+        operate.update_keyboard()
+        operate.take_pic()
+        drive_meas = operate.control()
+        operate.update_slam(drive_meas)
+        operate.record_data()
+        operate.save_image()
+        operate.detect_target()
+        # visualise
+        operate.draw(canvas)
+        pygame.display.update()
+    ############################################################################################
+    ########################################################################################
+
     parser = argparse.ArgumentParser("Fruit searching")
     parser.add_argument("--map", type=str, default='M4_true_map.txt')
     parser.add_argument("--ip", metavar='', type=str, default='localhost')
     parser.add_argument("--port", metavar='', type=int, default=40000)
     args, _ = parser.parse_known_args()
 
-    ppi = PenguinPi(args.ip, args.port)
+    ppi = operate.pibot
 
     # read in the true map
     fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
     search_list = read_search_list()
     print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
 
-    print('aruco: ', aruco_true_pos)
 
     # the needed parameters
-    fileS = "calibration/param/scale.txt"
-    scale = np.loadtxt(fileS, delimiter=',')
-    fileB = "calibration/param/baseline.txt"
-    baseline = np.loadtxt(fileB, delimiter=',')
-    fileI = "calibration/param/intrinsic.txt"
-    intrinsic = np.loadtxt(fileI, delimiter=',')
-    fileD = "calibration/param/distCoeffs.txt"
-    dist_coeffs = np.loadtxt(fileD, delimiter=',')
+    #fileS = "calibration/param/scale.txt"
+    #scale = np.loadtxt(fileS, delimiter=',')
+    #fileB = "calibration/param/baseline.txt"
+    #baseline = np.loadtxt(fileB, delimiter=',')
+    #fileI = "calibration/param/intrinsic.txt"
+    #intrinsic = np.loadtxt(fileI, delimiter=',')
+    #fileD = "calibration/param/distCoeffs.txt"
+    #dist_coeffs = np.loadtxt(fileD, delimiter=',')
 
-    waypoint = [0.0, 0.0]
-    robot_pose = [0.0, 0.0, 0.0]
+    #waypoint = [0.0, 0.0]
+    #robot_pose = [0.0, 0.0, 0.0]
 
     # intialise slam
     # if args.ip == 'localhost':
     #    scale /= 2
     #    #pass
-    robot = Robot(baseline, scale, intrinsic, dist_coeffs)
-    kalman_filter = EKF(robot) # Occupancy list
-    markers_matrix = aruco.aruco_detector(robot, marker_length=0.07)
+    # robot = Robot(baseline, scale, intrinsic, dist_coeffs)
+    #operate.ekf = operate.ekf # Occupancy list
+    #operate.aruco_det = operate.aruco_det
 
-    # since we know where the markes is, chaneg the self.markers in the ekf kalman_filter
+    # since we know where the markes is, chaneg the self.markers in the ekf operate.ekf
     # do a for loop for all markers including fruits
     aruco_list = []
     fruits = []
@@ -468,57 +587,69 @@ if __name__ == "__main__":
             'orange':2,
             'pear':3,
             'strawberry':4}
+    f_dict = {}
     for i in range(len(fruits_true_pos)):
         item = item_in_map(f_id[fruits_list[i]], fruits_true_pos[i])
+        f_dict[fruits_list[i]] = fruits_true_pos[i]
         fruits.append(item)
     print('fruits', fruits[0].coordinates, fruits[0].tag)
-    kalman_filter.add_landmarks(fruits)  # will add known
+    operate.ekf.add_landmarks(fruits)  # will add known
     for i in range(len(aruco_true_pos)):
         item = item_in_map(str(i), aruco_true_pos[i])
         aruco_list.append(item)
     aruco_list[0].tag = str(10)
-    kalman_filter.add_landmarks(aruco_list)  # will add known
-    # print(kalman_filter.markers)
-    # print(kalman_filter.taglist)
-    # print(kalman_filter.P)
+    operate.ekf.add_landmarks(aruco_list)  # will add known
+    #print(operate.ekf.markers)
+    #print(operate.ekf.taglist)
+    #print(operate.ekf.P)
 
     # The following code is only a skeleton code the semi-auto fruit searching task
     # implement RRT, loop is for the number of fruits
 
-    start = [0.3, 0.3]
-    g_offset = 0.7
-    goal = [fruits[0].coordinates[0][0] - g_offset, fruits[0].coordinates[1][0] ]#- g_offset]
+    start = list(operate.ekf.robot.state[0:2,:])
+    g_offset = 0.3
+    # goal = [fruits[0].coordinates[0][0] - g_offset, fruits[0].coordinates[1][0] ]#- g_offset]
+    goal = [f_dict[i] - [g_offset,g_offset] for i in search_list]
     obstacles_aruco = []
-    for item in aruco_list:
-        obstacles_aruco.append(Circle(item.coordinates[0], item.coordinates[1]))
+    lms_xy = operate.ekf.markers[:2,:]
+    for i in range(len(operate.ekf.markers[0,:])):
+        obstacles_aruco.append(Circle(lms_xy[0,i], lms_xy[1,i]))
     expand_dis = 0.4
+    print("obstacles:", obstacles_aruco)
     print(start)
     print(goal)
-    rrt = RRTC(start=start, goal=goal, width=2.4, height=2.4, obstacle_list=obstacles_aruco, expand_dis=expand_dis,
+    rrt = RRTC(start=start, goal=goal[0], width=2.4, height=2.4, obstacle_list=obstacles_aruco, expand_dis=expand_dis,
                path_resolution=0.2)
-    try:
-        route = rrt.planning()
-    except Exception as e:
-        print(e)
+    # try:
+    route = rrt.planning()
+    # except Exception as e:
+    #     print(e)
     print(route)
     input("press enter to start moving:...")
     for i in range(len(route) - 2, -1, -1):
         print('begin')
         destination = route[i]
         waypoint = [destination[0], destination[1]]
-        # try:
-        drive_to_point(waypoint, robot_pose, ppi, kalman_filter, markers_matrix)
-        # except Exception as e:
-            # print(e)
-        # estimate the robot's pose
-        print('get pose')
-        robot_pose = get_robot_pose(kalman_filter)
-        print("Finished driving to waypoint: {}; New robot pose: {}".format(waypoint, robot_pose))
-
-        # exit
-        ppi.set_velocity([0, 0])
-        print('stopping for 3 seconds')
-        time.sleep(3)
+        main(waypoint, ppi, operate.aruco_det, goal[0])
+    
+    # for i in range(len(route) - 2, -1, -1):
+    #     print('begin')
+    #     destination = route[i]
+    #     waypoint = [destination[0], destination[1]]
+    #     # try:
+    #     robot_pose = get_robot_pose(operate.ekf)
+    #     drive_to_point(waypoint, robot_pose, ppi, operate.ekf, operate.aruco_det)
+    #     # except Exception as e:
+    #         # print(e)
+    #     # estimate the robot's pose
+    #     print('get pose')
+    #     robot_pose = get_robot_pose(operate.ekf)
+    #     print("Finished driving to waypoint: {}; New robot pose: {}".format(waypoint, robot_pose))
+    #
+    #     # exit
+    #     ppi.set_velocity([0, 0])
+    #     print('stopping for 3 seconds')
+    #     time.sleep(3)
 
 
 
