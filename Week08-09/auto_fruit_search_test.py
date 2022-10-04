@@ -10,6 +10,7 @@ import time
 import random
 import math
 from operate06 import *
+from matplotlib import pyplot as plt
 
 # import dependencies and set random seed
 seed_value = 5
@@ -20,17 +21,17 @@ np.random.seed(seed_value)
 
 # import slam components
 sys.path.insert(0, "{}/slam".format(os.getcwd()))
-from slam.ekf import ekf
-from slam.robot import robot
+from slam.ekf import EKF
+from slam.robot import Robot
 import slam.aruco_detector as aruco
 
 # import utility functions
 sys.path.insert(0, "{}/util".format(os.getcwd()))
-from pibot import penguinpi
+from pibot import PenguinPi
 import measure as measure
 
 
-class circle:
+class Circle:
     def __init__(self, c_x, c_y, radius=0.1):
         self.center = np.array([c_x, c_y])
         self.radius = radius
@@ -43,8 +44,8 @@ class circle:
 
             dist.append(dx * dx + dy * dy)
         if np.min(dist) <= self.radius ** 2:
-            return true
-        return false
+            return True
+        return False
 
 
 class RRTC:
@@ -62,9 +63,9 @@ class RRTC:
             self.y = y
             self.path_x = []
             self.path_y = []
-            self.parent = none
+            self.parent = None
 
-    def __init__(self, start=np.zeros(2), goal=np.array([120, 90]), obstacle_list=none, width=160, height=100,
+    def __init__(self, start=np.zeros(2), goal=np.array([120, 90]), obstacle_list=None, width=160, height=100,
                  expand_dis=3.0, path_resolution=0.5, max_points=200):
         """
         setting parameter
@@ -116,7 +117,7 @@ class RRTC:
                 check_dist, _ = self.calc_distance_and_angle(end_expand_node, nearby_node)
 
                 # 3. add the node that connects the trees and generate the path
-                if check_dist < self.expand_dis:  # true path is found
+                if check_dist < self.expand_dis:  # True path is found
                     final_path = self.steer(end_expand_node, nearby_node, self.expand_dis)
                     if self.is_collision_free(final_path):
                         # note: it is important that you return path found as:
@@ -138,7 +139,7 @@ class RRTC:
             # 5. swap start and end trees
             self.end_node_list, self.start_node_list = self.start_node_list, self.end_node_list
         # endtodo ----------------------------------------------------------------------------------------------
-        return none  # cannot find path
+        return None  # cannot find path
 
     # ------------------------------do not change helper methods below ----------------------------
     def steer(self, from_node, to_node, extend_length=float("inf")):
@@ -179,15 +180,15 @@ class RRTC:
         """
         determine if nearby_node (new_node) is in the collision-free space.
         """
-        if new_node is none:
-            return true
-        points = np.vstack((new_node.path_x, new_node.path_y)).t
+        if new_node is None:
+            return True
+        points = np.vstack((new_node.path_x, new_node.path_y)).T
         for obs in self.obstacle_list:
             in_collision = obs.is_in_collision_with_points(points)
             if in_collision:
-                return false
+                return False
 
-        return true  # safe
+        return True  # safe
 
     def generate_final_course(self, start_mid_point, end_mid_point):
         """
@@ -197,7 +198,7 @@ class RRTC:
 
         node = self.start_node_list[start_mid_point]
         path = []
-        while node.parent is not none:
+        while node.parent is not None:
             path.append([node.x, node.y])
             node = node.parent
         path.append([node.x, node.y])
@@ -206,7 +207,7 @@ class RRTC:
         node = self.end_node_list[end_mid_point]
         path = path[::-1]
         other_sect = []
-        while node.parent is not none:
+        while node.parent is not None:
             other_sect.append([node.x, node.y])
             path.append([node.x, node.y])
             node = node.parent
@@ -245,7 +246,7 @@ class RRTC:
         return d, theta
 
 
-def read_true_map(fname):
+def read_True_map(fname):
     """read the ground truth map and output the pose of the aruco markers and 3 types of target fruit to search
 
     @param fname: filename of the map
@@ -257,8 +258,8 @@ def read_true_map(fname):
     with open(fname, 'r') as fd:
         gt_dict = json.load(fd)
         fruit_list = []
-        fruit_true_pos = []
-        aruco_true_pos = np.empty([10, 2])
+        fruit_True_pos = []
+        aruco_True_pos = np.empty([10, 2])
 
         # remove unique id of targets of the same type
         for key in gt_dict:
@@ -267,20 +268,20 @@ def read_true_map(fname):
 
             if key.startswith('aruco'):
                 if key.startswith('aruco10'):
-                    aruco_true_pos[9][0] = x
-                    aruco_true_pos[9][1] = y
+                    aruco_True_pos[9][0] = x
+                    aruco_True_pos[9][1] = y
                 else:
                     marker_id = int(key[5])  # giving id to aruco markers
-                    aruco_true_pos[marker_id][0] = x
-                    aruco_true_pos[marker_id][1] = y
+                    aruco_True_pos[marker_id][0] = x
+                    aruco_True_pos[marker_id][1] = y
             else:
                 fruit_list.append(key[:-2])
-                if len(fruit_true_pos) == 0:
-                    fruit_true_pos = np.array([[x, y]])
+                if len(fruit_True_pos) == 0:
+                    fruit_True_pos = np.array([[x, y]])
                 else:
-                    fruit_true_pos = np.append(fruit_true_pos, [[x, y]], axis=0)
+                    fruit_True_pos = np.append(fruit_True_pos, [[x, y]], axis=0)
 
-        return fruit_list, fruit_true_pos, aruco_true_pos
+        return fruit_list, fruit_True_pos, aruco_True_pos
 
 
 def read_search_list():
@@ -298,12 +299,12 @@ def read_search_list():
     return search_list
 
 
-def print_target_fruits_pos(search_list, fruit_list, fruit_true_pos):
+def print_target_fruits_pos(search_list, fruit_list, fruit_True_pos):
     """print out the target fruits' pos in the search order
 
     @param search_list: search order of the fruits
     @param fruit_list: list of target fruits
-    @param fruit_true_pos: positions of the target fruits
+    @param fruit_True_pos: positions of the target fruits
     """
 
     print("search order:")
@@ -313,8 +314,8 @@ def print_target_fruits_pos(search_list, fruit_list, fruit_true_pos):
             if fruit == fruit_list[i]:
                 print('{}) {} at [{}, {}]'.format(n_fruit,
                                                   fruit,
-                                                  np.round(fruit_true_pos[i][0], 1),
-                                                  np.round(fruit_true_pos[i][1], 1)))
+                                                  np.round(fruit_True_pos[i][0], 1),
+                                                  np.round(fruit_True_pos[i][1], 1)))
         n_fruit += 1
 
 
@@ -439,14 +440,14 @@ def calculate_angle_from_goal(pose, goal):
 class controller:
     def __init__(self, operate):
         # Goal is the immediate destination, waypoints is the list of destinations
-        self.dist_between_points = lambda pose, goal: math.dist(pose, goal)
+        self.dist_between_points = lambda pose, goal: np.linalg.norm(np.array(pose) - np.array(goal))
         self.angle_between_points = lambda pose, goal: np.arctan2(goal[1] - pose[1], goal[0] - pose[0])
 
         # variables
         self.operate = operate
         self.ekf = operate.ekf
         self.aruco = operate.aruco_det
-        self.get_pose = lambda: [i[0] for i in self.ekf.robot[:3]]
+        self.get_pose = lambda: [i[0] for i in self.ekf.robot.state[:3]]
         self.pose = self.get_pose()  # x, y, theta
         self.goal = goal  # x, y
         self.state = {'Turn': 0}
@@ -462,6 +463,7 @@ class controller:
         self.look_ahead = 0.2
 
     def get_path(self, path):
+        print("pose-->", self.pose)
         self.waypoints = path
         while (len(self.waypoints) > 1 and self.dist_between_points(self.pose[:2],
                                                                     self.waypoints[0]) < self.look_ahead):
@@ -476,8 +478,8 @@ class controller:
         Aim: take in waypoint, travel to waypoint
         '''
         while not self.goal_reached:
-            angle_to_rotate = self.calculate_angle_from_goal(operate.ekf.robot.state[:3], goal)
-            dist_to_goal = self.dist_between_points(operate.ekf.robot.state[:3], goal)
+            angle_to_rotate = self.calculate_angle_from_goal()
+            dist_to_goal = self.dist_between_points(self.pose[:2], goal)
             print('pose, goal', self.pose, self.goal)
             print('Dist2Goal: {:.3f} || Ang2Goal: {:.3f}'.format(dist_to_goal, math.degrees(angle_to_rotate)))
             if dist_to_goal > self.dist_from_goal:
@@ -517,11 +519,13 @@ class controller:
             lv, rv = ppi.set_velocity([1, 0], tick=drive_speed, time=1)
         else:
             # turn
-            lv, rv = ppi.set_velocity([0, dir], turning_tick=turn_speed,
+            lv, rv = ppi.set_velocity([0, direction], turning_tick=turn_speed,
                                       time=1)  # set_velocity([0, dir], turning_tick=wheel_vel, time=turn_time)
         drive_meas = measure.Drive(lv, rv, 1)  # this is our drive message to update the slam
         update_slam(drive_meas, self.aruco, self.operate.pibot, self.ekf)
-        time.sleep(1)
+        time.sleep(2)
+        update_slam(drive_meas, self.aruco, self.operate.pibot, self.ekf)
+        self.pose = self.get_pose()
 
     def calculate_angle_from_goal(self):
         angle_to_rotate = self.angle_between_points(self.pose, self.goal) - self.pose[2]
@@ -610,10 +614,10 @@ if __name__ == "__main__":
 
     ppi = operate.pibot
 
-    # read in the true map
-    fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
+    # read in the True map
+    fruits_list, fruits_True_pos, aruco_True_pos = read_True_map(args.map)
     search_list = read_search_list()
-    print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
+    print_target_fruits_pos(search_list, fruits_list, fruits_True_pos)
 
     # the needed parameters
     # fileS = "calibration/param/scale.txt"
@@ -646,14 +650,14 @@ if __name__ == "__main__":
             'pear': 3,
             'strawberry': 4}
     f_dict = {}
-    for i in range(len(fruits_true_pos)):
-        item = item_in_map(f_id[fruits_list[i]], fruits_true_pos[i])
-        f_dict[fruits_list[i]] = fruits_true_pos[i]
+    for i in range(len(fruits_True_pos)):
+        item = item_in_map(f_id[fruits_list[i]], fruits_True_pos[i])
+        f_dict[fruits_list[i]] = fruits_True_pos[i]
         fruits.append(item)
     print('fruits', fruits[0].coordinates, fruits[0].tag)
     operate.ekf.add_landmarks(fruits)  # will add known
-    for i in range(len(aruco_true_pos)):
-        item = item_in_map(str(i), aruco_true_pos[i])
+    for i in range(len(aruco_True_pos)):
+        item = item_in_map(str(i), aruco_True_pos[i])
         aruco_list.append(item)
     aruco_list[0].tag = str(10)
     operate.ekf.add_landmarks(aruco_list)  # will add known
@@ -682,14 +686,21 @@ if __name__ == "__main__":
     route = rrt.planning()
     # except Exception as e:
     #     print(e)
-    print(route)
-    input("press enter to start moving:...")
+    route = [[float(i[0]), float(i[1])] for i in route]
+    print("route -->", route)
+    print("length-->", len(route))
+
+    # x = [i[0] for i in route]
+    # y = [i[1] for i in route]
+    # plt.scatter(x,y)
+    # plt.show()
+    input("press enter to start moving:... start {},\n end {},\n route{}".format(start, goal, route[0]))
     # for i in range(len(route) - 2, -1, -1):
     #     print('begin')
     #     destination = route[i]
     #     waypoint = [destination[0], destination[1]]
-    controller(operate, route)
-    controller.get_path()
+    greg = controller(operate)
+    greg.get_path(route)
 
     # for i in range(len(route) - 2, -1, -1):
     #     print('begin')
