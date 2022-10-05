@@ -95,7 +95,7 @@ class EKF:
         # print('x', x[:3])
         q = self.predict_covariance(raw_drive_meas)
         self.P = F @ self.P @ F.T + q
-        # self.set_state_vector(x)
+        self.set_state_vector(x)
 
 
     # the update step of EKF

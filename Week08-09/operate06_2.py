@@ -5,6 +5,8 @@ import numpy as np
 import cv2 
 import os, sys
 import time
+import math
+import time
 
 # import utility functions
 sys.path.insert(0, "{}/utility".format(os.getcwd()))
@@ -83,12 +85,118 @@ class Operate:
         self.bg = pygame.image.load('pics/gui_mask.jpg')
         self.args = args
 
+        # --- From Controller
+        self.dist_between_points = lambda pose, goal: np.linalg.norm(np.array(pose) - np.array(goal))
+        self.angle_between_points = lambda pose, goal: np.arctan2(goal[1] - pose[1], goal[0] - pose[0])
+
+        # variables
+        self.get_pose = lambda: [i[0] for i in self.ekf.robot.state[:3]]
+        self.pose = self.get_pose()  # x, y, theta
+        self.state = {'Turn': 0}
+        self.waypoints = []
+        self.goal = [0., 0.]
+
+
+        # Params
+        self.dist_from_goal = 0.3
+        self.max_angle = np.pi / 18  # Maximum offset angle from goal before correction
+        self.min_angle = self.max_angle * 0.5  # Maximum offset angle from goal after correction
+        self.goal_reached = False
+        self.look_ahead = 0.2
+
+    def get_path(self, path):
+        print("pose-->", self.pose)
+        self.waypoints = path
+        while (len(self.waypoints) > 1 and self.dist_between_points(self.pose[:2],
+                                                                    self.waypoints[0]) < self.look_ahead):
+            print('way len', len(self.waypoints))
+            self.waypoints.pop(0)
+
+        self.goal = self.waypoints[0]
+        self.main()
+
+    def main(self):
+        '''
+        Aim: take in waypoint, travel to waypoint
+        '''
+        self.control_clock = time.time()
+        while not self.goal_reached:
+            angle_to_rotate = self.calculate_angle_from_goal()
+            dist_to_goal = self.dist_between_points(self.pose[:2], self.goal)
+            print('pose, goal', self.pose, self.goal)
+            print('Dist2Goal: {:.3f} || Ang2Goal: {:.3f}'.format(dist_to_goal, math.degrees(angle_to_rotate)))
+            if dist_to_goal > self.dist_from_goal:
+                # Check if we need to rotate or drive straight
+                if (self.state['Turn'] == 0 and abs(angle_to_rotate) > self.max_angle) or self.state['Turn'] == 1:
+                    # Drive curvy
+                    self.state['Turn'] = 1
+                    if abs(angle_to_rotate) < self.min_angle:
+                        self.state['Turn'] = 0
+                    print('Drive turn')
+                    self.drive(ang_to_rotate=angle_to_rotate)
+                elif self.state['Turn'] == 0:
+                    # Drive straight
+                    print('Drive straight')
+                    self.drive(ang_to_rotate=0)
+                else:
+                    print('BOI YO DRIVING BE SHITE', self.state['Turn'], angle_to_rotate)
+            else:
+                # Waypoint reached
+                if len(self.waypoints) == 1 or len(self.waypoints) == 0:
+                    # Destination reached
+                    print('Goal achieved')
+                    self.drive(0, 0)
+                    self.goal_reached = True
+                else:
+                    # look for next waypoint
+                    self.waypoints.pop(0)
+                    self.goal = self.waypoints[0]
+
+
+    def drive(self, ang_to_rotate=0, value=0.5):
+        curve = 0.0
+        direction = np.sign(ang_to_rotate)
+        turn_speed = 20
+        drive_speed = 50
+
+        if direction == 0:
+            # drive straight
+            lv, rv = self.pibot.set_velocity([1, 0], tick=drive_speed, time=1)
+        else:
+            # turn
+            print('direction', direction)
+            lv, rv = self.pibot.set_velocity([0, int(direction)], turning_tick=turn_speed,
+                                      time=0)  # set_velocity([0, dir], turning_tick=wheel_vel, time=turn_time)
+        drive_meas = measure.Drive(lv, rv, time.time() - self.control_clock)  # this is our drive message to update the slam
+        self.control_clock = time.time()
+        self.update_slam(drive_meas)
+        time.sleep(0.1)
+        self.pose = self.get_pose()
+
+    def calculate_angle_from_goal(self):
+        angle_to_rotate = self.angle_between_points(self.pose, self.goal) - self.pose[2]
+        # Ensures minimum rotation
+        if angle_to_rotate < -np.pi:
+            angle_to_rotate += 2 * np.pi
+        if angle_to_rotate > np.pi:
+            angle_to_rotate -= 2 * np.pi
+        return angle_to_rotate
+
+    def update_slam(self, drive_meas):
+        image = self.pibot.get_image()
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        lms, aruco_img = self.aruco_det.detect_marker_positions(image)
+        is_success = self.ekf.recover_from_pause(lms)
+        if not is_success:
+            self.ekf.predict(drive_meas)
+            self.ekf.add_landmarks(lms)  # will only add if something new is seen
+            self.ekf.update(lms)
+
     # wheel control
     def control(self):       
         if self.args.play_data:
             lv, rv = self.pibot.set_velocity()            
         else:
-            print('DRIVVVVEEEEE', self.command['motion'])
             lv, rv = self.pibot.set_velocity(
                 self.command['motion'])
         if not self.data is None:
@@ -103,22 +211,22 @@ class Operate:
         if not self.data is None:
             self.data.write_image(self.img)
 
-    # SLAM with ARUCO markers       
-    def update_slam(self, drive_meas):
-        lms, self.aruco_img = self.aruco_det.detect_marker_positions(self.img)
-        if self.request_recover_robot:
-            is_success = self.ekf.recover_from_pause(lms)
-            if is_success:
-                self.notification = 'Robot pose is successfuly recovered'
-                self.ekf_on = True
-            else:
-                self.notification = 'Recover failed, need >2 landmarks!'
-                self.ekf_on = False
-            self.request_recover_robot = False
-        elif self.ekf_on: # and not self.debug_flag:
-            self.ekf.predict(drive_meas)
-            self.ekf.add_landmarks(lms)
-            self.ekf.update(lms)
+    # # SLAM with ARUCO markers
+    # def update_slam(self, drive_meas):
+    #     lms, self.aruco_img = self.aruco_det.detect_marker_positions(self.img)
+    #     if self.request_recover_robot:
+    #         is_success = self.ekf.recover_from_pause(lms)
+    #         if is_success:
+    #             self.notification = 'Robot pose is successfuly recovered'
+    #             self.ekf_on = True
+    #         else:
+    #             self.notification = 'Recover failed, need >2 landmarks!'
+    #             self.ekf_on = False
+    #         self.request_recover_robot = False
+    #     elif self.ekf_on: # and not self.debug_flag:
+    #         self.ekf.predict(drive_meas)
+    #         self.ekf.add_landmarks(lms)
+    #         self.ekf.update(lms)
 
     # using computer vision to detect targets
     def detect_target(self):

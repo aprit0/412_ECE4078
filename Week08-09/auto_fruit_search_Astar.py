@@ -1,5 +1,5 @@
 # m4 - autonomous fruit searching
-
+# Shamelessly stolen from Aidan's repo https://github.com/aprit0/Robot-4191/blob/main/Robot-4191/SPAM.py
 # basic python packages
 import sys, os
 import cv2
@@ -11,6 +11,7 @@ import random
 import math
 from operate06 import *
 from matplotlib import pyplot as plt
+import pyastar2d
 
 # import dependencies and set random seed
 seed_value = 5
@@ -476,6 +477,25 @@ class item_in_map:
         self.tag = name
         self.coordinates = np.array([[measurement[0]], [measurement[1]]])
 
+def pose_to_pixel(self, pose):
+    # pose maps from - map_dimension : map_dimension
+    map = lambda old_value, old_min, old_max, new_min, new_max: ((old_value - old_min) / (old_max - old_min)) * (
+                new_max - new_min) + new_min
+    pixel_x = map(pose[0], self.morigin, -self.morigin,
+                  (self.map_dimension / self.map_resolution) - 1, 1)
+    pixel_y = map(pose[1], self.morigin, -self.morigin,
+                  (self.map_dimension / self.map_resolution) - 1, 1)
+    return int(pixel_x), int(pixel_y)
+
+def pixel_to_pose(self, pixel):
+
+    map = lambda old_value, old_min, old_max, new_max, new_min: ((old_value - old_min) / (old_max - old_min)) * (
+                new_max - new_min) + new_min
+    pose_x = map(pixel[0], 1, (self.map_dimension / self.map_resolution) - 1, self.morigin,
+                 -self.morigin)
+    pose_y = map(pixel[1], 1, (self.map_dimension / self.map_resolution) - 1, self.morigin,
+                 -self.morigin)
+    return pose_x, pose_y
 
 # main loop
 if __name__ == "__main__":
@@ -599,11 +619,34 @@ if __name__ == "__main__":
     print("obstacles:", obstacles_aruco)
     print(start)
     start = list(operate.operate.ekf.robot.state[0:2, :])
+
+    # --- occupancy grid
+    map_resolution = 0.1 # metres / pixel
+    map_dimension = 1.4 * 2 # metres
+    map_size = map_dimension / map_resolution
+    map = np.ones((map_size, map_size))
+    '''
+    Now add obstacles to the map in the correct location
+    - convert centre of obstacles to map frame
+    - input obstacles into map of value np.inf
+    - pad obstacles by 1 in x or y
+    heuristic = [[-1, 0], [1, 0], [0, 1], [0, -1]]
+    for point in obstacles:
+        for new_point in heuristic:
+            map[point + new_point] = np.inf 
+    convert start pose to pixel frame
+    convert goal pose to pixel frame
+    visualise path as well plz
+    '''
+
+
     for g in goal:
-        rrt = RRTC(start=start, goal=g, width=2.4, height=2.4, obstacle_list=obstacles_aruco, expand_dis=expand_dis,
-                   path_resolution=0.1)
-        # try:
-        route = rrt.planning()
+        # map: wall = np.inf, empty space = 1.
+        route = pyastar2d.astar_path(map, start, goal, allow_diagonal=True)
+        print('Raw Route')
+        # String pulling
+        # def str_pull: identifies vertecies in lines, and removes redundant waypoints using gradients
+
         route = [[float(i[0]), float(i[1])] for i in route]
         if not float(route[0][0]) == float(start[0]):
             route = route[::-1]

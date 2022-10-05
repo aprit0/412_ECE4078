@@ -9,7 +9,7 @@ import argparse
 import time
 import random
 import math
-from operate06 import *
+from operate06_2 import *
 from matplotlib import pyplot as plt
 
 # import dependencies and set random seed
@@ -70,7 +70,7 @@ class RRTC:
             self.parent = None
 
     def __init__(self, start=np.zeros(2), goal=np.array([120, 90]), obstacle_list=None, width=160, height=100,
-                 expand_dis=3.0, path_resolution=0.1, max_points=200):
+                 expand_dis=3.0, path_resolution=0.5, max_points=200):
         """
         setting parameter
         start:start position [x,y]
@@ -342,41 +342,27 @@ def get_robot_pose(kalman):
 
 class controller(Operate):
     def __init__(self, args, TITLE_FONT, TEXT_FONT):
-        self.operate = Operate(args, TITLE_FONT, TEXT_FONT)
+        super(controller, self).__init__(args, TITLE_FONT, TEXT_FONT)
         # Goal is the immediate destination, waypoints is the list of destinations
         self.dist_between_points = lambda pose, goal: np.linalg.norm(np.array(pose) - np.array(goal))
         self.angle_between_points = lambda pose, goal: np.arctan2(goal[1] - pose[1], goal[0] - pose[0])
 
         # variables
-        self.get_pose = lambda: [i[0] for i in self.operate.ekf.robot.state[:3]]
+        self.get_pose = lambda: [i[0] for i in self.ekf.robot.state[:3]]
         self.pose = self.get_pose()  # x, y, theta
         self.state = {'Turn': 0}
         self.waypoints = []
         self.goal = [0., 0.]
-        self.control_clock = 0
 
 
         # Params
         self.dist_from_goal = 0.05
-        self.max_angle = np.pi / 15  # Maximum offset angle from goal before correction
+        self.max_angle = np.pi / 30  # Maximum offset angle from goal before correction
         self.min_angle = self.max_angle * 0.5  # Maximum offset angle from goal after correction
         self.goal_reached = False
         self.look_ahead = 0.2
 
-        while not self.operate.quit:
-           self.operate.update_keyboard()
-           self.operate.take_pic()
-           drive_meas = self.operate.control()
-           self.operate.update_slam(drive_meas)
-           self.operate.record_data()
-           self.operate.save_image()
-           self.operate.detect_target()
-           # visualise
-           self.operate.draw(canvas)
-           pygame.display.update()
-
     def get_path(self, path):
-        self.goal_reached = False
         print("pose-->", self.pose)
         self.waypoints = path
         while (len(self.waypoints) > 1 and self.dist_between_points(self.pose[:2],
@@ -385,18 +371,15 @@ class controller(Operate):
             self.waypoints.pop(0)
 
         self.goal = self.waypoints[0]
-        print('fin get_path')
-        x = self.main()
-        return x
+        self.main()
 
     def main(self):
         '''
         Aim: take in waypoint, travel to waypoint
         '''
-        self.control_clock = time.time()
         while not self.goal_reached:
             angle_to_rotate = self.calculate_angle_from_goal()
-            dist_to_goal = self.dist_between_points(self.pose[:2], self.goal)
+            dist_to_goal = self.dist_between_points(self.pose[:2], goal)
             print('pose, goal', self.pose, self.goal)
             print('Dist2Goal: {:.3f} || Ang2Goal: {:.3f}'.format(dist_to_goal, math.degrees(angle_to_rotate)))
             if dist_to_goal > self.dist_from_goal:
@@ -423,31 +406,26 @@ class controller(Operate):
                     self.goal_reached = True
                 else:
                     # look for next waypoint
-                    print('WAYPOINT ACHIEVED')
                     self.waypoints.pop(0)
                     self.goal = self.waypoints[0]
-        return self.pose
 
 
     def drive(self, ang_to_rotate=0, value=0.5):
         curve = 0.0
         direction = np.sign(ang_to_rotate)
-        turn_speed = 10
+        turn_speed = 20
         drive_speed = 50
 
-        if direction == 0 and value != 0:
+        if direction == 0:
             # drive straight
-            # self.operate.command['motion'] = [1, 0]
-            lv, rv = self.operate.pibot.set_velocity([1, 0], tick=drive_speed, time=0)
+            lv, rv = self.pibot.set_velocity([1, 0], tick=drive_speed, time=1)
         else:
             # turn
-            lv, rv = self.operate.pibot.set_velocity([0, int(direction)], turning_tick=turn_speed,
-                                             time=0)  # set_velocity([0, dir], turning_tick=wheel_vel, time=turn_time)
-            # self.operate.command['motion'] = [0, direction]
-        drive_meas = measure.Drive(lv, rv, time.time() - self.control_clock)  # this is our drive message to update the slam
-        self.control_clock = time.time()
+            lv, rv = self.pibot.set_velocity([1, direction], turning_tick=turn_speed,
+                                      time=0)  # set_velocity([0, dir], turning_tick=wheel_vel, time=turn_time)
+        drive_meas = measure.Drive(lv, rv, 1)  # this is our drive message to update the slam
         self.update_slam(drive_meas)
-        time.sleep(0.5)
+        time.sleep(2)
         self.pose = self.get_pose()
 
     def calculate_angle_from_goal(self):
@@ -460,14 +438,13 @@ class controller(Operate):
         return angle_to_rotate
 
     def update_slam(self, drive_meas):
-        self.operate.take_pic()
-        lms, aruco_img = self.operate.aruco_det.detect_marker_positions(self.operate.img)
-        is_success = self.operate.ekf.recover_from_pause(lms)
+        image = self.pibot.get_image()
+        lms, aruco_img = self.aruco_det.detect_marker_positions(image)
+        is_success = self.ekf.recover_from_pause(lms)
         if not is_success:
-            print('NOT SUCCESS')
-            self.operate.ekf.predict(drive_meas)
-            self.operate.ekf.add_landmarks(lms)  # will only add if something new is seen
-            self.operate.ekf.update(lms)
+            self.ekf.predict(drive_meas)
+            self.ekf.add_landmarks(lms)  # will only add if something new is seen
+            self.ekf.update(lms)
 
 #####################################################################################################
 
@@ -483,14 +460,12 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-
+    parser.add_argument("--ip", metavar='', type=str, default='localhost')
+    parser.add_argument("--port", metavar='', type=int, default=40000)
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
     parser.add_argument("--save_data", action='store_true')
     parser.add_argument("--play_data", action='store_true')
     parser.add_argument("--ckpt", default='network/scripts/model/model.best.pth')
-    parser.add_argument("--map", type=str, default='M4_true_map.txt')
-    parser.add_argument("--ip", metavar='', type=str, default='localhost')
-    parser.add_argument("--port", metavar='', type=int, default=40000)
     args, _ = parser.parse_known_args()
 
     pygame.font.init()
@@ -524,11 +499,27 @@ if __name__ == "__main__":
             pygame.display.update()
             counter += 2
 
-    operate = controller(args, TITLE_FONT, TEXT_FONT)
-
+    # operate = controller(args, TITLE_FONT, TEXT_FONT)
+    operate = Operate(args, TITLE_FONT, TEXT_FONT)
+    while not operate.quit:
+       operate.update_keyboard()
+       operate.take_pic()
+       drive_meas = operate.control()
+       operate.update_slam(drive_meas)
+       operate.record_data()
+       operate.save_image()
+       operate.detect_target()
+       # visualise
+       operate.draw(canvas)
+       pygame.display.update()
     ############################################################################################
     ########################################################################################
 
+    parser = argparse.ArgumentParser("Fruit searching")
+    parser.add_argument("--map", type=str, default='M4_true_map.txt')
+    parser.add_argument("--ip", metavar='', type=str, default='localhost')
+    parser.add_argument("--port", metavar='', type=int, default=40000)
+    args, _ = parser.parse_known_args()
 
     # ppi = operate.pibot
 
@@ -573,12 +564,12 @@ if __name__ == "__main__":
         f_dict[fruits_list[i]] = fruits_True_pos[i]
         fruits.append(item)
     print('fruits', fruits[0].coordinates, fruits[0].tag)
-    operate.operate.ekf.add_landmarks(fruits)  # will add known
+    operate.ekf.add_landmarks(fruits)  # will add known
     for i in range(len(aruco_True_pos)):
         item = item_in_map(str(i), aruco_True_pos[i])
         aruco_list.append(item)
     aruco_list[0].tag = str(10)
-    operate.operate.ekf.add_landmarks(aruco_list)  # will add known
+    operate.ekf.add_landmarks(aruco_list)  # will add known
     # print(operate.ekf.markers)
     # print(operate.ekf.taglist)
     # print(operate.ekf.P)
@@ -586,29 +577,56 @@ if __name__ == "__main__":
     # The following code is only a skeleton code the semi-auto fruit searching task
     # implement RRT, loop is for the number of fruits
 
+    start = list(operate.ekf.robot.state[0:2, :])
     g_offset = 0.3
     # goal = [fruits[0].coordinates[0][0] - g_offset, fruits[0].coordinates[1][0] ]#- g_offset]
     off = lambda x: x - g_offset if x > 0 else x + g_offset
     goal = [[off(f_dict[i][0]), off(f_dict[i][1])] for i in search_list ]
     # goal = [f_dict[i] - [g_offset, g_offset] for i in search_list]
     obstacles_aruco = []
-    lms_xy = operate.operate.ekf.markers[:2, :]
-    for i in range(len(operate.operate.ekf.markers[0, :])):
+    lms_xy = operate.ekf.markers[:2, :]
+    for i in range(len(operate.ekf.markers[0, :])):
         obstacles_aruco.append(Circle(lms_xy[0, i], lms_xy[1, i]))
     expand_dis = 0.4
     print("obstacles:", obstacles_aruco)
     print(start)
-    start = list(operate.operate.ekf.robot.state[0:2, :])
-    for g in goal:
-        rrt = RRTC(start=start, goal=g, width=2.4, height=2.4, obstacle_list=obstacles_aruco, expand_dis=expand_dis,
-                   path_resolution=0.1)
-        # try:
-        route = rrt.planning()
-        route = [[float(i[0]), float(i[1])] for i in route]
-        if not float(route[0][0]) == float(start[0]):
-            route = route[::-1]
-        print("route -->", route)
-        print("length-->", len(route))
+    print(goal)
+    rrt = RRTC(start=start, goal=goal[0], width=2.4, height=2.4, obstacle_list=obstacles_aruco, expand_dis=expand_dis,
+               path_resolution=0.2)
+    # try:
+    route = rrt.planning()
+    # except Exception as e:
+    #     print(e)
+    route = [[float(i[0]), float(i[1])] for i in route]
+    print("route -->", route)
+    print("length-->", len(route))
 
-        _ = input("press enter to start moving:... \nstart -- {},\nend -- {},\nroute -- {}".format(start, goal, route))
-        start = operate.get_path(route)
+    # x = [i[0] for i in route]
+    # y = [i[1] for i in route]
+    # plt.scatter(x,y)
+    # plt.show()
+    input("press enter to start moving:... \nstart {},\nend {},\nroute{}".format(start, goal, route))
+    # for i in range(len(route) - 2, -1, -1):
+    #     print('begin')
+    #     destination = route[i]
+    #     waypoint = [destination[0], destination[1]]
+    operate.get_path(route)
+
+    # for i in range(len(route) - 2, -1, -1):
+    #     print('begin')
+    #     destination = route[i]
+    #     waypoint = [destination[0], destination[1]]
+    #     # try:
+    #     robot_pose = get_robot_pose(operate.ekf)
+    #     drive_to_point(waypoint, robot_pose, ppi, operate.ekf, operate.aruco_det)
+    #     # except Exception as e:
+    #         # print(e)
+    #     # estimate the robot's pose
+    #     print('get pose')
+    #     robot_pose = get_robot_pose(operate.ekf)
+    #     print("Finished driving to waypoint: {}; New robot pose: {}".format(waypoint, robot_pose))
+    #
+    #     # exit
+    #     ppi.set_velocity([0, 0])
+    #     print('stopping for 3 seconds')
+    #     time.sleep(3)
