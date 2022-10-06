@@ -624,7 +624,7 @@ if __name__ == "__main__":
     map_resolution = 0.1 # metres / pixel
     map_dimension = 1.4 * 2 # metres
     map_size = map_dimension / map_resolution
-    map = np.ones((map_size, map_size))
+    map = np.ones((map_size, map_size)) # shape = 28*28
     '''
     Now add obstacles to the map in the correct location
     - convert centre of obstacles to map frame
@@ -638,6 +638,49 @@ if __name__ == "__main__":
     convert goal pose to pixel frame
     visualise path as well plz
     '''
+    # start =
+    # goal =
+    start = [map_size - 1 - start[1], start[0]]
+    goal = [map_size - 1 - goal[1], goal[0]]
+    obstacles_list = list(fruits_True_pos) + list(aruco_True_pos)
+    obstacles_map_frame = []
+
+    # converting pose to map frame
+    for item in obstacles_list:
+        x_obs, y_obs = pose_to_pixel(item, map_dimension, map_resolution)
+        obstacles_map_frame.append([x_obs, y_obs])
+
+    # x_start,y_start = pose_to_pixel(start,map_dimension,map_resolution)
+    # start_map_frame = [x_start,y_start]
+    # x_goal,y_goal = pose_to_pixel(goal,map_dimension,map_resolution)
+    # goal_map_frame = [x_goal,y_goal]
+
+    # adding obstacles and heuristic into the map
+    for item in obstacles_map_frame:
+        map_arr[map_size - 1 - item[1]][item[0]] = np.inf
+        # Adding heuristic
+        map_arr[map_size - 1 - item[1] - 1][item[0]] = np.inf
+        map_arr[map_size - 1 - item[1] + 1][item[0]] = np.inf
+        map_arr[map_size - 1 - item[1]][item[0] + 1] = np.inf
+        map_arr[map_size - 1 - item[1]][item[0] - 1] = np.inf
+
+    map_arr = np.array(map_arr, dtype=np.float32)
+    path = pyastar2d.astar_path(map_arr, start, goal, allow_diagonal=False)
+
+    while path == None:
+        goal = [goal[0] - 1, goal[1] - 1]
+        path = pyastar2d.astar_path(map_arr, start, goal, allow_diagonal=False)
+        if path[0][0] != None:
+            break
+
+    path_pose = []
+
+    # converting from map frame to pose
+    for item in path:
+        x_obs, y_obs = pixel_to_pose(item, map_dimension, map_resolution)
+        path_pose.append([x_obs, y_obs])
+    # for item in path:
+    #     map_arr[item[0]][item[1]] = 200
 
 
     for g in goal:
