@@ -359,7 +359,7 @@ class controller(Operate):
 
         # Params
         self.dist_from_goal = 0.07
-        self.max_angle = np.pi / 15  # Maximum offset angle from goal before correction
+        self.max_angle = np.pi / 10  # Maximum offset angle from goal before correction
         self.min_angle = self.max_angle * 0.75  # Maximum offset angle from goal after correction
         self.goal_reached = False
         self.look_ahead = 0.2
@@ -464,7 +464,7 @@ class controller(Operate):
         self.operate.take_pic()
         lms, aruco_img = self.operate.aruco_det.detect_marker_positions(self.operate.img)
         is_success = self.operate.ekf.recover_from_pause(lms)
-        if not is_success:
+        if True:#not is_success:
             print('NOT SUCCESS')
             self.operate.ekf.predict(drive_meas)
             self.operate.ekf.add_landmarks(lms)  # will only add if something new is seen
@@ -645,16 +645,14 @@ if __name__ == "__main__":
     '''
     def pad(map, item_list, full_pad=True):
         if full_pad:
-            heuristic = [[1, 0], [0, 1], [-1, 0], [0, -1]] + [[1,1], [1,-1], [-1,1], [-1,-1]] + [[2, 0], [0, 2], [-2, 0], [0, -2]]
+            pad = 2
         else:
-            heuristic = [[1, 0], [0, 1], [-1, 0], [0, -1]]
+            pad = 1
         for item in item_list:
-            for h in heuristic:
-                item_new = [item[i] + h[i] for i in range(len(h))]
-                try:
-                    map[item_new[0], item_new[1]] = np.inf
-                except:
-                    pass
+            try:
+                map[item[0] - pad: item[0] + pad, item[1] - pad: item[1] + pad] = np.inf
+            except:
+                pass
         return map
 
     x_start,y_start = pose_to_pixel(start,map_dimension,map_resolution)
