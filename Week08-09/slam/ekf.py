@@ -87,7 +87,6 @@ class EKF:
 
     # the prediction step of EKF
     def predict(self, raw_drive_meas):
-        print(raw_drive_meas)
         self.robot.drive(raw_drive_meas)
         x = self.get_state_vector()  # Sigma k
         F = self.state_transition(raw_drive_meas)  # F = A in notes
@@ -96,6 +95,8 @@ class EKF:
         q = self.predict_covariance(raw_drive_meas)
         self.P = F @ self.P @ F.T + q
         self.set_state_vector(x)
+
+
 
 
     # the update step of EKF
@@ -163,7 +164,8 @@ class EKF:
             lm_inertial = robot_xy + R_theta @ lm_bff
 
             self.taglist.append(int(lm.tag))
-            self.markers = np.concatenate((self.markers, lm_inertial), axis=1)
+            print(lm_inertial)
+            self.markers = np.concatenate((self.markers, lm_inertial), axis=-1)
 
             # Create a simple, large covariance to be fixed by the update step
             self.P = np.concatenate((self.P, np.zeros((2, self.P.shape[1]))), axis=0)
