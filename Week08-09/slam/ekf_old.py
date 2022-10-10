@@ -88,46 +88,47 @@ class EKF:
     # the prediction step of EKF
     def predict(self, raw_drive_meas):
         self.robot.drive(raw_drive_meas)
-        state = self.get_state_vector()
-        # compute robot's state given the control input
-        self.set_state_vector(state)
-        # Get A using state_transition()
-        F = self.state_transition(raw_drive_meas)
-        # Get Q using predict_covariance()
-        Q = self.predict_covariance(raw_drive_meas)
-        # Update robot's uncertainty and update robot's state
-        self.P = F @ self.P @ F.T + Q
-        state = self.get_state_vector()[0:3, :]
-        print('ekf, state: ', state)
-        return state
+        x = self.get_state_vector()  # Sigma k
+        F = self.state_transition(raw_drive_meas)  # F = A in notes
+        # TODO: add your codes here to compute the predicted x
+        # print('x', x[:3])
+        q = self.predict_covariance(raw_drive_meas)
+        self.P = F @ self.P @ F.T + q
+        self.set_state_vector(x)
+
+
+
 
     # the update step of EKF
     def update(self, measurements):
         if not measurements:
             return
+
         # Construct measurement index list
         tags = [lm.tag for lm in measurements]
         idx_list = [self.taglist.index(tag) for tag in tags]
 
         # Stack measurements and set covariance
-        z = np.concatenate([lm.position.reshape(-1, 1) for lm in measurements], axis=0)
-        R = np.zeros((2 * len(measurements), 2 * len(measurements)))
+        z = np.concatenate([lm.position.reshape(-1, 1) for lm in measurements], axis=0)  # z_k
+        R = np.zeros((2 * len(measurements), 2 * len(measurements)))  # sigma_r
         for i in range(len(measurements)):
             R[2 * i:2 * i + 2, 2 * i:2 * i + 2] = measurements[i].covariance
 
         # Compute own measurements
         z_hat = self.robot.measure(self.markers, idx_list)
-        z_hat = z_hat.reshape((-1, 1), order="F")
-        state = self.get_state_vector()
-        H = self.robot.derivative_measure(self.markers, idx_list)
+        z_hat = z_hat.reshape((-1, 1), order="F")  # H(mu_k)
+        H = self.robot.derivative_measure(self.markers, idx_list)  # H == C
+
+        x_hat = self.get_state_vector()  # x_hat
+
+        # TODO: add your codes here to compute the updated x
         S = H @ self.P @ H.T + R
         K = self.P @ H.T @ np.linalg.inv(S)
+
         y = z - z_hat
-        x = state + K @ y
+        x = x_hat + K @ y
         self.set_state_vector(x)
         self.P = (np.eye(x.shape[0]) - K @ H) @ self.P
-        state = self.get_state_vector()[0:3,:]
-        return state
 
     def state_transition(self, raw_drive_meas):
         n = self.number_landmarks() * 2 + 3
@@ -138,7 +139,7 @@ class EKF:
     def predict_covariance(self, raw_drive_meas):
         n = self.number_landmarks() * 2 + 3
         Q = np.zeros((n, n))
-        Q[0:3, 0:3] = self.robot.covariance_drive(raw_drive_meas) + 0.01 * np.eye(3)
+        Q[0:3, 0:3] = self.robot.covariance_drive(raw_drive_meas) #+ 0.1 * np.eye(3)
         return Q
 
     def add_landmarks(self, measurements):
@@ -159,42 +160,12 @@ class EKF:
                 lm_bff = lm.position
             except:
                 lm_bff = lm.coordinates
+
             lm_inertial = robot_xy + R_theta @ lm_bff
 
             self.taglist.append(int(lm.tag))
-            self.markers = np.concatenate((self.markers, lm_inertial), axis=1)
-
-            # Create a simple, large covariance to be fixed by the update step
-            self.P = np.concatenate((self.P, np.zeros((2, self.P.shape[1]))), axis=0)
-            self.P = np.concatenate((self.P, np.zeros((self.P.shape[0], 2))), axis=1)
-            self.P[-2, -2] = self.init_lm_cov ** 2
-            self.P[-1, -1] = self.init_lm_cov ** 2
-
-    # reading mark positions and write to state
-    def check_landmarks(self, measurements, aruco_true_position):
-        if not measurements:
-            return
-
-        th = self.robot.state[2]
-        robot_xy = self.robot.state[0:2, :]
-        R_theta = np.block([[np.cos(th), -np.sin(th)], [np.sin(th), np.cos(th)]])
-
-        # Add new landmarks to the state
-        for lm in measurements:
-            if lm.tag in self.taglist:
-                # ignore known tags
-                continue
-
-            # lm_bff = lm.position
-            # lm_inertial = robot_xy + R_theta @ lm_bff
-
-            # Using the given marker positions
-            for i in range(1, 11):
-                if lm.tag == i:
-                    lm_inertial = [[aruco_true_position[i - 1, 0]], [aruco_true_position[i - 1, 1]]]
-
-            self.taglist.append(int(lm.tag))
-            self.markers = np.concatenate((self.markers, lm_inertial), axis=1)
+            print(lm_inertial)
+            self.markers = np.concatenate((self.markers, lm_inertial), axis=-1)
 
             # Create a simple, large covariance to be fixed by the update step
             self.P = np.concatenate((self.P, np.zeros((2, self.P.shape[1]))), axis=0)
@@ -322,3 +293,5 @@ class EKF:
         else:
             angle = 0
         return (axes_len[0], axes_len[1]), angle
+
+

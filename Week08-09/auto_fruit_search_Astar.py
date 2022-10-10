@@ -264,7 +264,7 @@ def read_True_map(fname):
         gt_dict = json.load(fd)
         fruit_list = []
         fruit_True_pos = []
-        aruco_True_pos = np.empty([11, 2])
+        aruco_True_pos = np.empty([10, 2])
 
         # remove unique id of targets of the same type
         for key in gt_dict:
@@ -273,8 +273,8 @@ def read_True_map(fname):
 
             if key.startswith('aruco'):
                 if key.startswith('aruco10'):
-                    aruco_True_pos[10][0] = x
-                    aruco_True_pos[10][1] = y
+                    aruco_True_pos[0][0] = x
+                    aruco_True_pos[0][1] = y
                 else:
                     marker_id = int(key[5])  # giving id to aruco markers
                     aruco_True_pos[marker_id][0] = x
@@ -444,7 +444,7 @@ class controller(Operate):
         direction = np.sign(ang_to_rotate)
         turn_speed = 10
         drive_speed = 30
-        t_0 = (ang_to_rotate / (2 * np.pi)) * 4.4
+        t_0 = 0
         if direction == 0 and value != 0:
             # drive straight
             # self.operate.command['motion'] = [1, 0]
@@ -514,16 +514,16 @@ class controller(Operate):
     def update_slam(self, drive_meas):
         self.operate.take_pic()
         lms, aruco_img = self.operate.aruco_det.detect_marker_positions(self.operate.img)
-        #is_success = self.operate.ekf.recover_from_pause(lms)
-        if True:#not is_success:
-            print('NOT SUCCESS')
-            self.operate.ekf.predict(drive_meas)
-            self.operate.ekf.add_landmarks(lms)  # will only add if something new is seen
-            self.operate.ekf.update(lms)
-        else:
-            print('----------------success----')
-            time.sleep(1)
+        is_success = self.operate.ekf.recover_from_pause(lms)
+        print('NOT SUCCESS')
+        self.operate.ekf.predict(drive_meas)
+        self.operate.ekf.add_landmarks(lms)  # will only add if something new is seen
+        self.operate.ekf.update(lms)
         self.pose = self.get_pose()
+        if is_success:
+            print('----------------success----')
+            # print('pose', self.pose)
+            # time.sleep(2)
 
 #####################################################################################################
 

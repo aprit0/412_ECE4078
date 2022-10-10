@@ -21,7 +21,7 @@ class PenguinPi:
         r_vel = command[0]*tick + command[1]*turning_tick
         self.wheel_vel = [l_vel, r_vel]
         if time == 0:
-            requests.get(
+            x = requests.get(
                 f"http://{self.ip}:{self.port}/robot/set/velocity?value="+str(l_vel)+","+str(r_vel))
         else:
             assert (time > 0), "Time must be positive."
