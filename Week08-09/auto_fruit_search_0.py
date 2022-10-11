@@ -137,7 +137,7 @@ class Operate:
             state = self.robot_pose
             print('xxxxxxxxxxxx')
             time.sleep(1)
-        self.robot_pose[-1] += 0
+        self.robot_pose[-1] += 0.
         print('state: update_slam', self.robot_pose)
         return self.robot_pose
 
@@ -320,7 +320,7 @@ class Operate:
         print('ang/dist', angle_to_waypoint, distance_to_goal)
         while distance_to_goal > 0.18:  # ensure it is within 30cm from goal
             time.sleep(0.05)
-            print('pose', self.robot_pose)
+            print('pose', self.robot_pose, self.waypoint)
             # keep travelling to goal
             print('ang/dist', angle_to_waypoint, distance_to_goal)
             if abs(angle_to_waypoint) > np.pi / 45:  # if the angle to the waypoint is above a threshold, turn
@@ -552,7 +552,7 @@ if __name__ == "__main__":
 
     operate = Operate(args)
     ppi = PenguinPi(args.ip, args.port)
-    operate.ekf.reset()
+    
     operate.robot_pose = [[0],[0],[0]]
     ############################################################################################
     ########################################################################################
@@ -652,7 +652,7 @@ if __name__ == "__main__":
 
 
     operate.robot_pose = [[0],[0],[0]]
-
+    operate.ekf.reset()
     # debug start and end
     map_arr = np.array(map_arr, dtype=np.float32)
     for g in goal_map_frame:
@@ -710,12 +710,12 @@ if __name__ == "__main__":
 
         #route = route[::-1]
 
-        _ = input("press enter to start moving:... \nstart -- {},\nend -- {},\nroute -- {}".format(
-            (pixel_to_pose(new_start, map_dimension, map_resolution), start), (pixel_to_pose(new_goal, map_dimension, map_resolution), goal), path_pose))
+        #_ = input("press enter to start moving:... \nstart -- {},\nend -- {},\nroute -- {}".format(pixel_to_pose(new_start, map_dimension, map_resolution), start), (pixel_to_pose(new_goal, map_dimension, map_resolution), goal), path_pose))
         for point in path_pose:
             operate.waypoint = [point[0], point[1]]
             operate.drive_to_point()
-
+        print('arrive at: ', operate.robot_pose)
+        time.sleep(3)
         x_start,y_start = pose_to_pixel(operate.robot_pose,map_dimension,map_resolution)
         start_map_frame = [x_start,y_start]
 
