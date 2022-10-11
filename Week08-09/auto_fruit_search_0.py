@@ -105,6 +105,7 @@ class Operate:
                 self.command['motion'])
         if not self.data is None:
             self.data.write_keyboard(lv, rv)
+        time.sleep(0.05)
         dt = time.time() - self.control_clock
         drive_meas = measure.Drive(lv, rv, dt)
         self.control_clock = time.time()
@@ -259,25 +260,25 @@ class Operate:
             pygame.quit()
             sys.exit()
 
-    def get_distance_robot_to_goal(self):
+    def get_distance_robot_to_goal(self, waypoint):
         '''
 	Compute Euclidean distance between the robot and the goal location
 	:param robot_state: 3D vector (x, y, theta) representing the current state of the robot
 	:param goal: 3D Cartesian coordinates of goal location
         '''
-        if np.array(self.waypoint).shape[0] < 3:
-            goal = np.hstack((self.waypoint, np.array([0])))
+        if np.array(waypoint).shape[0] < 3:
+            goal = np.hstack((waypoint, np.array([0])))
         else:
-            goal = self.waypoint
+            goal = waypoint
 
         x_goal, y_goal, _ = goal
         x, y, theta = self.robot_pose
         x_diff = x_goal - x
         y_diff = y_goal - y
 
-        rho = np.hypot(x_diff, y_diff)
+        dist = np.hypot(x_diff, y_diff)
 
-        return rho
+        return dist
 
     def clamp_angle(self, rad_angle=0, min_value=-np.pi, max_value=np.pi):
         """
@@ -313,60 +314,42 @@ class Operate:
 
         return alpha
 
-    def drive_to_point(self):
-        distance_to_goal = self.get_distance_robot_to_goal()
-        angle_to_waypoint = self.get_angle_robot_to_goal()
-
-        print('ang/dist', angle_to_waypoint, distance_to_goal)
-        while distance_to_goal > 0.3:  # ensure it is within 30cm from goal
-            time.sleep(0.05)
-            print('pose', self.robot_pose)
-            # keep travelling to goal
-            print('ang/dist', angle_to_waypoint, distance_to_goal)
-            if abs(angle_to_waypoint) > np.pi / 45:  # if the angle to the waypoint is above a threshold, turn
-                # Turn
-                if angle_to_waypoint < 0:  # turn left
-                    self.command['motion'] = [0, 1]
-                else:  # turn right
-                    self.command['motion'] = [0, -1]
-            else:
-                # Drive straight
-                self.command['motion'] = [1, 0]
-
-            drive_meas = self.control()
-            state = self.update_slam(drive_meas)
-            print('goal', self.waypoint)
-            distance_to_goal = self.get_distance_robot_to_goal()
+    def drive_to_point(self, path):
+        min_goal = 0.4 # distance before stopping at goal
+        min_waypoint = 0.075 # distance before stopping at waypoint
+        for point in path:
+            print('start loop', point)
+            self.waypoint = point
+            distance_to_goal = self.get_distance_robot_to_goal(self.waypoint)
             angle_to_waypoint = self.get_angle_robot_to_goal()
-        # stop driving
-        self.command['motion'] = [0, 0]
-        drive_meas = self.control()
-        self.update_slam(drive_meas)
-        print("Arrived at [{}, {}]".format(self.waypoint[0], self.waypoint[1]))
 
+            while distance_to_goal > min_waypoint and self.get_distance_robot_to_goal(path[-2]) > min_goal:  # ensure it is within 30cm from goal
+                print('pose', list(self.robot_pose))
+                # keep travelling to goal
+                print('ang/dist', angle_to_waypoint, distance_to_goal, self.get_distance_robot_to_goal(path[-2]))
+                if abs(angle_to_waypoint) > np.pi / 45:  # if the angle to the waypoint is above a threshold, turn
+                    # Turn
+                    if angle_to_waypoint < 0:  # turn left
+                        self.command['motion'] = [0, 1]
+                    else:  # turn right
+                        self.command['motion'] = [0, -1]
+                else:
+                    # Drive straight
+                    self.command['motion'] = [1, 0]
 
-    def turnaround(self):
-        angle_to_waypoint = self.get_angle_robot_to_goal()
-        while (abs(angle_to_waypoint) > np.pi / 90):  # if the angle to the waypoint is above a threshold, turn
-            # Turn
-            if angle_to_waypoint > 0:  # turn left
-                self.command['motion'] = [0, -1]
-            if angle_to_waypoint < 0:  # turn left
-                self.command['motion'] = [0, 1]
-
-            #self.draw(canvas)
+                drive_meas = self.control()
+                state = self.update_slam(drive_meas)
+                print('NEW GOAL', self.waypoint)
+                distance_to_goal = self.get_distance_robot_to_goal(self.waypoint)
+                angle_to_waypoint = self.get_angle_robot_to_goal()
+            # stop driving
+            self.command['motion'] = [0, 0]
             drive_meas = self.control()
             self.update_slam(drive_meas)
+            print("Arrived at [{}, {}]".format(self.waypoint[0], self.waypoint[1]))
 
-            #pygame.display.update()
 
-            angle_to_waypoint = self.get_angle_robot_to_goal()
 
-        # stop driving
-        self.command['motion'] = [0, 0]
-        drive_meas = self.control()
-        self.update_slam(drive_meas)
-        print("Arrived at [{}, {}]".format(self.waypoint[0], self.waypoint[1]))
 
 
 
@@ -607,20 +590,32 @@ if __name__ == "__main__":
         # disc_pad = discouraged driving but allowed
         if full_pad:
             obs_pad = 2
+            disc_pad = 3
         else:
             obs_pad = 1
-        disc_pad = 3
+            disc_pad = 2
         for item in item_list:
             try:
-                map[item[0] - disc_pad: item[0] + disc_pad, item[1] - disc_pad: item[1] + disc_pad] = 3
+                map[item[0] - disc_pad: item[0] + disc_pad + 1, item[1] - disc_pad: item[1] + disc_pad + 1] = 3
+                # map[item[0] - disc_pad - 1: item[0] + disc_pad, item[1] - disc_pad - 1: item[1] + disc_pad] = 4
+                # start_point = [item[0] - disc_pad, item[1] - disc_pad]
+                # end_point = [item[0] + disc_pad, item[1] + disc_pad]
+                # cv2.rectangle(map, start_point, end_point, 47, -1 )
+                pass
             except:
                 pass
         for item in item_list:
             try:
-                map[item[0] - obs_pad: item[0] + obs_pad, item[1] - obs_pad: item[1] + obs_pad] = np.inf
-            except:
+                # start_point = [item[0] - disc_pad, item[1] - disc_pad]
+                # end_point = [item[0] + disc_pad, item[1] + disc_pad]
+                # map = cv2.rectangle(map, start_point, end_point, 47, -1 )
+                # print('hi')
+                map[item[0] - obs_pad: item[0] + obs_pad + 1, item[1] - obs_pad: item[1] + obs_pad + 1] = np.inf
+            except Exception as e:
+                print(e)
                 pass
         return map
+
 
     def str_pull(route):
         if len(route) > 2:
@@ -638,24 +633,19 @@ if __name__ == "__main__":
         else:
             return route
 
-    x_start,y_start = pose_to_pixel(start,map_dimension,map_resolution)
-    start_map_frame = [x_start,y_start]
-    goal_map_frame = []
-    for g in goal:
-        x_goal,y_goal = pose_to_pixel(g,map_dimension,map_resolution)
-        goal_map_frame.append([x_goal,y_goal])
 
     # adding obstacles and heuristic into the map
-    obstacles_map_frame = []
+    obstacles_map_frame_ar = []
     for item in list(aruco_True_pos):
         x_obs, y_obs = pose_to_pixel(item, map_dimension, map_resolution)
-        obstacles_map_frame.append([x_obs, y_obs])
-    map_arr = pad(map_arr, obstacles_map_frame, full_pad=True)
-    obstacles_map_frame = []
+        obstacles_map_frame_ar.append([x_obs, y_obs])
+    map_arr = pad(map_arr, obstacles_map_frame_ar, full_pad=True)
+    obstacles_map_frame_fruit = []
     for item in list(fruits_True_pos):
         x_obs, y_obs = pose_to_pixel(item, map_dimension, map_resolution)
-        obstacles_map_frame.append([x_obs, y_obs])
-    map_arr = pad(map_arr, obstacles_map_frame, full_pad=False)
+        obstacles_map_frame_fruit.append([x_obs, y_obs])
+    map_arr = pad(map_arr, obstacles_map_frame_fruit, full_pad=False)
+
 
 
 
@@ -663,23 +653,40 @@ if __name__ == "__main__":
 
     # debug start and end
     map_arr = np.array(map_arr, dtype=np.float32)
+    map_dimension = 1.4 * 3 # metres
+    map_size = int(map_dimension / map_resolution)
+    off = 6
+    map_len = map_arr.shape[0]
+    map_arr = map_arr[off:map_len - off+1, off: map_len - off+1]
+    print('new_shape', map_arr.shape)
+    map_dimension = map_arr.shape[0] * map_resolution
+
+    x_start,y_start = pose_to_pixel(start,map_dimension,map_resolution)
+    start_map_frame = [x_start,y_start]
+    goal_map_frame = []
+    for g in goal:
+        x_goal,y_goal = pose_to_pixel(g,map_dimension,map_resolution)
+        goal_map_frame.append([x_goal,y_goal])
+
     for g in goal_map_frame:
         map_arr[start_map_frame[0] - 1: start_map_frame[0] +1, start_map_frame[1] - 1 : start_map_frame[1] - 1] = 1
         map_arr[map_arr==1] = 1
         path = pyastar2d.astar_path(map_arr, start_map_frame, g, allow_diagonal=True)
         print('map', map_arr.shape, map_dimension, map_resolution)
         print('start/goal val', map_arr[start_map_frame[0], start_map_frame[1]], map_arr[goal_map_frame[0], goal_map_frame[1]])
-        print('obstacles', obstacles_map_frame)
+        print('obstacles', obstacles_map_frame_ar)
         new_goal = g
         new_start = start_map_frame
+        counter = 0
         while type(path) == type(None):
-            new_goal = [i - 1 if i > int(map_size/2) else i + 1 for i in new_goal]
-            new_start = [i - 1 if i > int(map_size/2) else i + 1 for i in new_start]
-            map_arr[new_start[0] - 1: new_start[0] +1, new_start[1] - 1 : new_start[1] - 1] = 1
-            map_arr[new_goal[0] - 1: new_goal[0] +1, new_goal[1] - 1 : new_goal[1] - 1] = 1
+            # new_goal = [i - 1 if i > int(map_size/2) else i + 1 for i in new_goal]
+            # new_start = [i - 1 if i > int(map_size/2) else i + 1 for i in new_start]
+            map_arr[new_start[0] - 1 - counter: new_start[0] +2 + counter, new_start[1] - 1 - counter: new_start[1] + 2 + counter] = 1
+            map_arr[new_goal[0] - 1 - counter: new_goal[0] +2 + counter, new_goal[1] - 1 - counter: new_goal[1] + 2 + counter] = 1
             path = pyastar2d.astar_path(map_arr, new_start, new_goal, allow_diagonal=True)
             print('path failed', new_goal, goal_map_frame)
             time.sleep(0.5)
+            counter += 1
 
 
         route = [[float(i[0]), float(i[1])] for i in path]
@@ -691,10 +698,16 @@ if __name__ == "__main__":
         values = sorted(list(np.unique(map_arr)))
         map_viz = np.copy(map_arr)
         print('VALUES_____________', values)
-        map_viz[map_viz==values[-1]] = 1 # obstacle
-        map_viz[map_viz==values[-2]] = 128 # discourage
-        map_viz[map_viz==values[1]] = 255 # path
-        map_viz[map_viz==values[0]] = 64 # normal
+        increment = np.linspace(0, 255, len(values))
+        for i in range(len(values)):
+            map_viz[map_viz==values[i]] = int(increment[i]) # normal
+        obstacles_map_frame_ar = []
+        for item in list(aruco_True_pos):
+            x_obs, y_obs = pose_to_pixel(item, map_dimension, map_resolution)
+            obstacles_map_frame_ar.append([x_obs, y_obs])
+        for obs in obstacles_map_frame_ar:
+            print(obs)
+            map_viz[obs[0], obs[1]] = 0
         # import scipy.misc
         from PIL import Image
         # attach path to map
@@ -725,9 +738,7 @@ if __name__ == "__main__":
 
         _ = input("press enter to start moving:... \nstart -- {},\nend -- {},\nroute -- {}".format(
             (pixel_to_pose(new_start, map_dimension, map_resolution), start), (pixel_to_pose(new_goal, map_dimension, map_resolution), goal), path_pose))
-        for point in path_pose:
-            operate.waypoint = [point[0], point[1]]
-            operate.drive_to_point()
+        operate.drive_to_point(path_pose)
 
         x_start,y_start = pose_to_pixel(operate.robot_pose,map_dimension,map_resolution)
         start_map_frame = [x_start,y_start]
