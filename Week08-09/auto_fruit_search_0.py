@@ -318,7 +318,7 @@ class Operate:
         angle_to_waypoint = self.get_angle_robot_to_goal()
 
         print('ang/dist', angle_to_waypoint, distance_to_goal)
-        while distance_to_goal > 0.18:  # ensure it is within 30cm from goal
+        while distance_to_goal > 0.3:  # ensure it is within 30cm from goal
             time.sleep(0.05)
             print('pose', self.robot_pose)
             # keep travelling to goal
@@ -513,7 +513,7 @@ if __name__ == "__main__":
     parser.add_argument("--save_data", action='store_true')
     parser.add_argument("--play_data", action='store_true')
     parser.add_argument("--ckpt", default='network/scripts/model/model.best.pth')
-    parser.add_argument("--map", type=str, default='M4_true_map_3fruits.txt')
+    parser.add_argument("--map", type=str, default='M4_true_map_5fruits.txt')
     parser.add_argument("--ip", metavar='', type=str, default='localhost')
     parser.add_argument("--port", metavar='', type=int, default=40000)
     args, _ = parser.parse_known_args()
@@ -603,13 +603,21 @@ if __name__ == "__main__":
     map_size = int(map_dimension / map_resolution)
     map_arr = np.ones((map_size, map_size)) # shape = 28*28
     def pad(map, item_list, full_pad=True):
+        # obs_pad = expanded area u cant cross
+        # disc_pad = discouraged driving but allowed
         if full_pad:
-            pad = 3
+            obs_pad = 2
         else:
-            pad = 1
+            obs_pad = 1
+        disc_pad = 3
         for item in item_list:
             try:
-                map[item[0] - pad: item[0] + pad, item[1] - pad: item[1] + pad] = np.inf
+                map[item[0] - disc_pad: item[0] + disc_pad, item[1] - disc_pad: item[1] + disc_pad] = 3
+            except:
+                pass
+        for item in item_list:
+            try:
+                map[item[0] - obs_pad: item[0] + obs_pad, item[1] - obs_pad: item[1] + obs_pad] = np.inf
             except:
                 pass
         return map
@@ -657,7 +665,7 @@ if __name__ == "__main__":
     map_arr = np.array(map_arr, dtype=np.float32)
     for g in goal_map_frame:
         map_arr[start_map_frame[0] - 1: start_map_frame[0] +1, start_map_frame[1] - 1 : start_map_frame[1] - 1] = 1
-        map_arr[map_arr==1] = 5
+        map_arr[map_arr==1] = 1
         path = pyastar2d.astar_path(map_arr, start_map_frame, g, allow_diagonal=True)
         print('map', map_arr.shape, map_dimension, map_resolution)
         print('start/goal val', map_arr[start_map_frame[0], start_map_frame[1]], map_arr[goal_map_frame[0], goal_map_frame[1]])
@@ -680,16 +688,21 @@ if __name__ == "__main__":
         # print('post_route\n', len(route))
 
         path_pose = []
-        map_arr[map_arr==np.inf] = 255
-        map_arr[map_arr==1] = 1
+        values = sorted(list(np.unique(map_arr)))
+        map_viz = np.copy(map_arr)
+        print('VALUES_____________', values)
+        map_viz[map_viz==values[-1]] = 1 # obstacle
+        map_viz[map_viz==values[-2]] = 128 # discourage
+        map_viz[map_viz==values[1]] = 255 # path
+        map_viz[map_viz==values[0]] = 64 # normal
         # import scipy.misc
         from PIL import Image
         # attach path to map
         for item in route:
-            map_arr[int(item[0]), int(item[1])] = 128
+            map_viz[int(item[0]), int(item[1])] = 200
         #im_array = np.array([map_arr, map_arr, map_arr]).T
         #print(im_array.shape)
-        im = Image.fromarray(map_arr)
+        im = Image.fromarray(map_viz)
         im = im.convert('RGB')
 
         im.save("your_file.png")
