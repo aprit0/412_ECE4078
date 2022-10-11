@@ -12,14 +12,16 @@ import cv2
 class Detector:
     def __init__(self, ckpt, use_gpu=False):
         self.args = args
-        self.model = Resnet18Skip(args)
+        #self.ckpt = ckpt
+        #self.model = Resnet18Skip(args)
+        self.model = torch.hub.load('./yolov5', 'custom', path=ckpt, source='local')
         if torch.cuda.torch.cuda.device_count() > 0 and use_gpu:
             self.use_gpu = True
             self.model = self.model.cuda()
         else:
             self.use_gpu = False
-        self.load_weights(ckpt)
-        self.model = self.model.eval()
+        #self.load_weights(ckpt)
+        #self.model = self.model.eval()
         cmd_printer.divider(text="warning")
         print('This detector uses "RGB" input convention by default')
         print('If you are using Opencv, the image is likely to be in "BRG"!!!')
@@ -30,16 +32,39 @@ class Detector:
         torch_img = self.np_img2torch(np_img)
         tick = time.time()
         with torch.no_grad():
-            pred = self.model.forward(torch_img)
-            if self.use_gpu:
-                pred = torch.argmax(pred.squeeze(),
-                                    dim=0).detach().cpu().numpy()
-            else:
-                pred = torch.argmax(pred.squeeze(), dim=0).detach().numpy()
+            pred = self.model(np_img)
+            # if self.use_gpu:
+            #     pred = torch.argmax(pred.squeeze(),
+            #                         dim=0).detach().cpu().numpy()
+            # else:
+            #     pred = torch.argmax(pred.squeeze(), dim=0).detach().numpy()
+
         dt = time.time() - tick
         print(f'Inference Time {dt:.2f}s, approx {1/dt:.2f}fps', end="\r")
-        colour_map = self.visualise_output(pred)
-        return pred, colour_map
+        detPandas = pred.pandas().xyxy[0]
+        # yolo colormap
+        colour_map = self.visualise_yolo(np_img, detPandas)
+        #print(np.shape(color_mapYolo))
+        #colour_map = self.visualise_output(pred)
+        return detPandas, colour_map
+
+
+    def visualise_yolo(self, np_img, nn_output):
+        # get bounding boxes
+        for idx in nn_output.index:
+            xA = int(nn_output.xmin[idx])
+            xB = int(nn_output.xmax[idx])
+            yA = int(nn_output.ymin[idx])
+            yB = int(nn_output.ymax[idx])
+            # drawing bounding box on the image
+            predImg = cv2.rectangle(np_img, (xA,yA), (xB,yB), (255,0,0), 2)
+        # resizing the image
+        color_map = cv2.resize(predImg, (320, 240), cv2.INTER_NEAREST)
+        # wring text on bounding box
+        return color_map
+
+
+
 
     def visualise_output(self, nn_output):
         r = np.zeros_like(nn_output).astype(np.uint8)
@@ -71,7 +96,7 @@ class Detector:
         if ckpt_exists:
             ckpt = torch.load(ckpt_path,
                               map_location=lambda storage, loc: storage)
-            self.model.load_state_dict(ckpt['weights'])
+            #self.model.load_state_dict(ckpt['weights'])
         else:
             print(f'checkpoint not found, weights are randomly initialised')
             

@@ -273,8 +273,8 @@ def read_True_map(fname):
 
             if key.startswith('aruco'):
                 if key.startswith('aruco10'):
-                    aruco_True_pos[9][0] = x
-                    aruco_True_pos[9][1] = y
+                    aruco_True_pos[0][0] = x
+                    aruco_True_pos[0][1] = y
                 else:
                     marker_id = int(key[5])  # giving id to aruco markers
                     aruco_True_pos[marker_id][0] = x
@@ -358,9 +358,9 @@ class controller(Operate):
 
 
         # Params
-        self.dist_from_goal = 0.05
-        self.max_angle = np.pi / 15  # Maximum offset angle from goal before correction
-        self.min_angle = self.max_angle * 0.5  # Maximum offset angle from goal after correction
+        self.dist_from_goal = 0.07
+        self.max_angle = np.pi / 10  # Maximum offset angle from goal before correction
+        self.min_angle = self.max_angle * 0.75  # Maximum offset angle from goal after correction
         self.goal_reached = False
         self.look_ahead = 0.2
 
@@ -448,7 +448,7 @@ class controller(Operate):
         drive_meas = measure.Drive(lv, rv, time.time() - self.control_clock)  # this is our drive message to update the slam
         self.control_clock = time.time()
         self.update_slam(drive_meas)
-        time.sleep(0.5)
+        time.sleep(0.01)
         self.pose = self.get_pose()
 
     def calculate_angle_from_goal(self):
@@ -464,11 +464,13 @@ class controller(Operate):
         self.operate.take_pic()
         lms, aruco_img = self.operate.aruco_det.detect_marker_positions(self.operate.img)
         is_success = self.operate.ekf.recover_from_pause(lms)
-        if not is_success:
+        if True:#not is_success:
             print('NOT SUCCESS')
             self.operate.ekf.predict(drive_meas)
             self.operate.ekf.add_landmarks(lms)  # will only add if something new is seen
             self.operate.ekf.update(lms)
+        else:
+            print('----------------success----')
 
 #####################################################################################################
 
@@ -477,24 +479,25 @@ class item_in_map:
         self.tag = name
         self.coordinates = np.array([[measurement[0]], [measurement[1]]])
 
-def pose_to_pixel(self, pose):
+def pose_to_pixel(pose,map_dimension,map_resolution):
+    morigin = map_dimension / 2.0
     # pose maps from - map_dimension : map_dimension
     map = lambda old_value, old_min, old_max, new_min, new_max: ((old_value - old_min) / (old_max - old_min)) * (
                 new_max - new_min) + new_min
-    pixel_x = map(pose[0], self.morigin, -self.morigin,
-                  (self.map_dimension / self.map_resolution) - 1, 1)
-    pixel_y = map(pose[1], self.morigin, -self.morigin,
-                  (self.map_dimension / self.map_resolution) - 1, 1)
+    pixel_x = map(pose[0], morigin, -morigin,
+                  1, (map_dimension / map_resolution) - 1)
+    pixel_y = map(pose[1], morigin, -morigin,
+                  1, (map_dimension / map_resolution) - 1)
     return int(pixel_x), int(pixel_y)
 
-def pixel_to_pose(self, pixel):
-
+def pixel_to_pose(pixel,map_dimension,map_resolution):
+    morigin = map_dimension / 2.0
     map = lambda old_value, old_min, old_max, new_max, new_min: ((old_value - old_min) / (old_max - old_min)) * (
                 new_max - new_min) + new_min
-    pose_x = map(pixel[0], 1, (self.map_dimension / self.map_resolution) - 1, self.morigin,
-                 -self.morigin)
-    pose_y = map(pixel[1], 1, (self.map_dimension / self.map_resolution) - 1, self.morigin,
-                 -self.morigin)
+    pose_x = map(pixel[0], (map_dimension / map_resolution) - 1, 1, morigin,
+                 -morigin)
+    pose_y = map(pixel[1],(map_dimension / map_resolution) - 1,1, morigin,
+                 -morigin)
     return pose_x, pose_y
 
 # main loop
@@ -508,7 +511,7 @@ if __name__ == "__main__":
     parser.add_argument("--save_data", action='store_true')
     parser.add_argument("--play_data", action='store_true')
     parser.add_argument("--ckpt", default='network/scripts/model/model.best.pth')
-    parser.add_argument("--map", type=str, default='M4_true_map.txt')
+    parser.add_argument("--map", type=str, default='M4_true_map_5fruits.txt')
     parser.add_argument("--ip", metavar='', type=str, default='localhost')
     parser.add_argument("--port", metavar='', type=int, default=40000)
     args, _ = parser.parse_known_args()
@@ -595,9 +598,12 @@ if __name__ == "__main__":
     print('fruits', fruits[0].coordinates, fruits[0].tag)
     operate.operate.ekf.add_landmarks(fruits)  # will add known
     for i in range(len(aruco_True_pos)):
+        print(str(i), aruco_True_pos[i])
         item = item_in_map(str(i), aruco_True_pos[i])
         aruco_list.append(item)
-    aruco_list[0].tag = str(10)
+    #checking
+    time.sleep(2)
+    # aruco_list[0].tag = str(10)
     operate.operate.ekf.add_landmarks(aruco_list)  # will add known
     # print(operate.ekf.markers)
     # print(operate.ekf.taglist)
@@ -606,10 +612,9 @@ if __name__ == "__main__":
     # The following code is only a skeleton code the semi-auto fruit searching task
     # implement RRT, loop is for the number of fruits
 
-    g_offset = 0.3
-    # goal = [fruits[0].coordinates[0][0] - g_offset, fruits[0].coordinates[1][0] ]#- g_offset]
-    off = lambda x: x - g_offset if x > 0 else x + g_offset
-    goal = [[off(f_dict[i][0]), off(f_dict[i][1])] for i in search_list ]
+    # g_offset = 0.3
+    # off = lambda x: x - g_offset if x > 0 else x + g_offset
+    goal = [[f_dict[i][0], f_dict[i][1]] for i in search_list ]
     # goal = [f_dict[i] - [g_offset, g_offset] for i in search_list]
     obstacles_aruco = []
     lms_xy = operate.operate.ekf.markers[:2, :]
@@ -623,8 +628,8 @@ if __name__ == "__main__":
     # --- occupancy grid
     map_resolution = 0.1 # metres / pixel
     map_dimension = 1.4 * 2 # metres
-    map_size = map_dimension / map_resolution
-    map = np.ones((map_size, map_size)) # shape = 28*28
+    map_size = int(map_dimension / map_resolution)
+    map_arr = np.ones((map_size, map_size)) # shape = 28*28
     '''
     Now add obstacles to the map in the correct location
     - convert centre of obstacles to map frame
@@ -638,63 +643,75 @@ if __name__ == "__main__":
     convert goal pose to pixel frame
     visualise path as well plz
     '''
-    # start =
-    # goal =
-    start = [map_size - 1 - start[1], start[0]]
-    goal = [map_size - 1 - goal[1], goal[0]]
-    obstacles_list = list(fruits_True_pos) + list(aruco_True_pos)
-    obstacles_map_frame = []
+    def pad(map, item_list, full_pad=True):
+        if full_pad:
+            pad = 2
+        else:
+            pad = 1
+        for item in item_list:
+            try:
+                map[item[0] - pad: item[0] + pad, item[1] - pad: item[1] + pad] = np.inf
+            except:
+                pass
+        return map
 
-    # converting pose to map frame
-    for item in obstacles_list:
-        x_obs, y_obs = pose_to_pixel(item, map_dimension, map_resolution)
-        obstacles_map_frame.append([x_obs, y_obs])
-
-    # x_start,y_start = pose_to_pixel(start,map_dimension,map_resolution)
-    # start_map_frame = [x_start,y_start]
-    # x_goal,y_goal = pose_to_pixel(goal,map_dimension,map_resolution)
-    # goal_map_frame = [x_goal,y_goal]
+    x_start,y_start = pose_to_pixel(start,map_dimension,map_resolution)
+    start_map_frame = [x_start,y_start]
+    goal_map_frame = []
+    for g in goal:
+        x_goal,y_goal = pose_to_pixel(g,map_dimension,map_resolution)
+        goal_map_frame.append([x_goal,y_goal])
 
     # adding obstacles and heuristic into the map
-    for item in obstacles_map_frame:
-        map_arr[map_size - 1 - item[1]][item[0]] = np.inf
-        # Adding heuristic
-        map_arr[map_size - 1 - item[1] - 1][item[0]] = np.inf
-        map_arr[map_size - 1 - item[1] + 1][item[0]] = np.inf
-        map_arr[map_size - 1 - item[1]][item[0] + 1] = np.inf
-        map_arr[map_size - 1 - item[1]][item[0] - 1] = np.inf
+    obstacles_map_frame = []
+    for item in list(aruco_True_pos):
+        x_obs, y_obs = pose_to_pixel(item, map_dimension, map_resolution)
+        obstacles_map_frame.append([x_obs, y_obs])
+    map_arr = pad(map_arr, obstacles_map_frame, full_pad=True)
+    obstacles_map_frame = []
+    for item in list(fruits_True_pos):
+        x_obs, y_obs = pose_to_pixel(item, map_dimension, map_resolution)
+        obstacles_map_frame.append([x_obs, y_obs])
+    map_arr = pad(map_arr, obstacles_map_frame, full_pad=False)
 
+    # debug start and end
     map_arr = np.array(map_arr, dtype=np.float32)
-    path = pyastar2d.astar_path(map_arr, start, goal, allow_diagonal=False)
+    for g in goal_map_frame:
+        map_arr[start_map_frame[0], start_map_frame[1]] = 1
+        path = pyastar2d.astar_path(map_arr, start_map_frame, g, allow_diagonal=True)
+        print('map', map_arr.shape, map_dimension, map_resolution)
+        print('start/goal val', map_arr[start_map_frame[0], start_map_frame[1]], map_arr[goal_map_frame[0], goal_map_frame[1]])
+        print('obstacles', obstacles_map_frame)
+        new_goal = g
+        new_start = start_map_frame
+        while type(path) == type(None):
+            new_goal = [i - 1 if i > int(map_size/2) else i + 1 for i in new_goal]
+            new_start = [i - 1 if i > int(map_size/2) else i + 1 for i in new_start]
+            map_arr[new_start[0], new_start[1]] = 1
+            map_arr[new_goal[0], new_goal[1]] = 1
+            path = pyastar2d.astar_path(map_arr, new_start, new_goal, allow_diagonal=True)
+            print('path failed', new_goal, goal_map_frame, path)
+            time.sleep(0.5)
 
-    while path == None:
-        goal = [goal[0] - 1, goal[1] - 1]
-        path = pyastar2d.astar_path(map_arr, start, goal, allow_diagonal=False)
-        if path[0][0] != None:
-            break
+        path_pose = []
 
-    path_pose = []
-
-    # converting from map frame to pose
-    for item in path:
-        x_obs, y_obs = pixel_to_pose(item, map_dimension, map_resolution)
-        path_pose.append([x_obs, y_obs])
-    # for item in path:
-    #     map_arr[item[0]][item[1]] = 200
+        # converting from map frame to pose
+        for item in path:
+            x_obs, y_obs = pixel_to_pose(item, map_dimension, map_resolution)
+            path_pose.append([x_obs, y_obs])
 
 
-    for g in goal:
+        # for g in goal:
         # map: wall = np.inf, empty space = 1.
-        route = pyastar2d.astar_path(map, start, goal, allow_diagonal=True)
-        print('Raw Route')
         # String pulling
         # def str_pull: identifies vertecies in lines, and removes redundant waypoints using gradients
 
-        route = [[float(i[0]), float(i[1])] for i in route]
-        if not float(route[0][0]) == float(start[0]):
-            route = route[::-1]
-        print("route -->", route)
-        print("length-->", len(route))
+        route = [[float(i[0]), float(i[1])] for i in path_pose]
+        #route = route[::-1]
 
-        _ = input("press enter to start moving:... \nstart -- {},\nend -- {},\nroute -- {}".format(start, goal, route))
+        _ = input("press enter to start moving:... \nstart -- {},\nend -- {},\nroute -- {}".format(
+            (pixel_to_pose(new_start, map_dimension, map_resolution), start), (pixel_to_pose(new_goal, map_dimension, map_resolution), goal), route))
         start = operate.get_path(route)
+
+        x_start,y_start = pose_to_pixel(start,map_dimension,map_resolution)
+        start_map_frame = [x_start,y_start]
