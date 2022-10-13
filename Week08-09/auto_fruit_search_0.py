@@ -117,28 +117,22 @@ class Operate:
 
     # SLAM with ARUCO markers
     def update_slam(self, drive_meas):
+        self.take_pic()
         lms, self.aruco_img = self.aruco_det.detect_marker_positions(self.img)
         # if self.request_recover_robot:
         is_success = self.ekf.recover_from_pause(lms)
         if is_success:
-            print('XXXXXXXXXXXXXXXXXXXxx')
-        #     if is_success:
-        #         self.notification = 'Robot pose is successfuly recovered'
-        #         self.ekf_on = True
-        #     else:
-        #         self.notification = 'Recover failed, need >2 landmarks!'
-        #         self.ekf_on = False
-        #     self.request_recover_robot = False
-        # elif self.ekf_on: # and not self.debug_flag:
-        self.robot_pose = self.ekf.predict(drive_meas) 
-        self.ekf.add_landmarks(lms)
-        if lms:
-            self.robot_pose = self.ekf.update(lms)
-            state = self.robot_pose
-            print('xxxxxxxxxxxx')
-            time.sleep(1)
-        self.robot_pose[-1] += 0.
-        print('state: update_slam', self.robot_pose)
+            self.robot_pose = self.ekf.robot.state[:3]
+        else:
+
+            pose_predict = self.ekf.predict(drive_meas)
+            self.ekf.add_landmarks(lms)
+            pose_update = self.ekf.update(lms)
+            if lms:
+                self.robot_pose = pose_update
+            else:
+                self.robot_pose = pose_predict
+        print('state: update_slam', self.robot_pose, lms)
         return self.robot_pose
 
     # using computer vision to detect targets
@@ -345,30 +339,6 @@ class Operate:
         print("Arrived at [{}, {}]".format(self.waypoint[0], self.waypoint[1]))
 
 
-    def turnaround(self):
-        angle_to_waypoint = self.get_angle_robot_to_goal()
-        while (abs(angle_to_waypoint) > np.pi / 90):  # if the angle to the waypoint is above a threshold, turn
-            # Turn
-            if angle_to_waypoint > 0:  # turn left
-                self.command['motion'] = [0, -1]
-            if angle_to_waypoint < 0:  # turn left
-                self.command['motion'] = [0, 1]
-
-            #self.draw(canvas)
-            drive_meas = self.control()
-            self.update_slam(drive_meas)
-
-            #pygame.display.update()
-
-            angle_to_waypoint = self.get_angle_robot_to_goal()
-
-        # stop driving
-        self.command['motion'] = [0, 0]
-        drive_meas = self.control()
-        self.update_slam(drive_meas)
-        print("Arrived at [{}, {}]".format(self.waypoint[0], self.waypoint[1]))
-
-
 
 class Circle:
     def __init__(self, c_x, c_y, radius=0.1):
@@ -400,8 +370,8 @@ def read_True_map(fname):
         gt_dict = json.load(fd)
         fruit_list = []
         fruit_True_pos = []
-        aruco_True_pos = np.empty([10, 2])
-
+        aruco_True_pos = np.empty([11, 2])
+        aruco_True_pos[0] = [50,50]
         # remove unique id of targets of the same type
         for key in gt_dict:
             x = np.round(gt_dict[key]['x'], 1)  # reading every x coordinates
@@ -409,8 +379,8 @@ def read_True_map(fname):
 
             if key.startswith('aruco'):
                 if key.startswith('aruco10'):
-                    aruco_True_pos[0][0] = x
-                    aruco_True_pos[0][1] = y
+                    aruco_True_pos[10][0] = x
+                    aruco_True_pos[10][1] = y
                 else:
                     marker_id = int(key[5])  # giving id to aruco markers
                     aruco_True_pos[marker_id][0] = x
@@ -431,7 +401,7 @@ def read_search_list():
     @return: search order of the target fruits
     """
     search_list = []
-    with open('search_list.txt', 'r') as fd:
+    with open('M4_search_list_lab4.txt', 'r') as fd:
         fruits = fd.readlines()
 
         for fruit in fruits:
@@ -513,7 +483,7 @@ if __name__ == "__main__":
     parser.add_argument("--save_data", action='store_true')
     parser.add_argument("--play_data", action='store_true')
     parser.add_argument("--ckpt", default='network/scripts/model/model.best.pth')
-    parser.add_argument("--map", type=str, default='M4_true_map_3fruits.txt')
+    parser.add_argument("--map", type=str, default='M4_3fruits_lab4.txt')
     parser.add_argument("--ip", metavar='', type=str, default='localhost')
     parser.add_argument("--port", metavar='', type=int, default=40000)
     args, _ = parser.parse_known_args()
@@ -604,7 +574,7 @@ if __name__ == "__main__":
     map_arr = np.ones((map_size, map_size)) # shape = 28*28
     def pad(map, item_list, full_pad=True):
         if full_pad:
-            pad = 3
+            pad = 2
         else:
             pad = 1
         for item in item_list:
