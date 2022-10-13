@@ -508,6 +508,7 @@ if __name__ == "__main__":
 
     start = False
 
+    # UNCOMMENT FOR M5
     # counter = 40
     # while not start:
     #     for event in pygame.event.get():
@@ -522,7 +523,19 @@ if __name__ == "__main__":
 
     operate = Operate(args)
     ppi = PenguinPi(args.ip, args.port)
-    
+    # UNCOMMENT FOR M5
+    # while start:
+    #     operate.update_keyboard()
+    #     operate.take_pic()
+    #     drive_meas = operate.control()
+    #     operate.update_slam(drive_meas)
+    #     operate.record_data()
+    #     operate.save_image()
+    #     operate.detect_target()
+    #     visualise
+        # operate.draw(canvas)
+        # pygame.display.update()
+
     operate.robot_pose = [[0],[0],[0]]
     ############################################################################################
     ########################################################################################
