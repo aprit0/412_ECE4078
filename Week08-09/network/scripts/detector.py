@@ -42,6 +42,7 @@ class Detector:
         dt = time.time() - tick
         print(f'Inference Time {dt:.2f}s, approx {1/dt:.2f}fps', end="\r")
         detPandas = pred.pandas().xyxy[0]
+        print(detPandas)
         # yolo colormap
         colour_map = self.visualise_yolo(np_img, detPandas)
         #print(np.shape(color_mapYolo))
