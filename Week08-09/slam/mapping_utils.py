@@ -19,11 +19,15 @@ class MappingUtils:
         assert(cov_sym_score < 0.01), "Covariance matrix is not symmetric."
     
     def save(self, fname="slam_map.txt"):
+        # save map for EKF
         map_attributes = {"taglist":self.taglist,
                           "markers":self.markers.tolist(),
                           "covariance":self.covariance.tolist()}
         with open(fname,'w') as map_file:
             json.dump(map_attributes, map_file, indent=2)
+
+
+
     
     def load(self, fname="slam_map.txt"):
         with open(fname,'r') as map_file:

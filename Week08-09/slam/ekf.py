@@ -57,6 +57,14 @@ class EKF:
         if self.number_landmarks() > 0:
             utils = MappingUtils(self.markers, self.P[3:, 3:], self.taglist)
             utils.save(fname)
+        print("MArkers--", self.markers)
+    def load_map(self, fname="./lab_output/slam_map.txt"):
+        utils = MappingUtils(self.markers, self.P[3:, 3:], self.taglist)
+        try:
+            utils.load(fname)
+        except Exception as e:
+            print('Failed to load map: ', e)
+
 
     def recover_from_pause(self, measurements):
         if not measurements:

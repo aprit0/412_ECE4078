@@ -122,6 +122,20 @@ class OutputWriter:
                     "covariance":slam.P[3:,3:].tolist()}
         with open(self.map_f, 'w') as map_f:
             json.dump(map_dict, map_f, indent=2)
+
+        # Save map for Astar
+        # self.taglist = [tag0, tag1]
+        # self.markers = [[y, x], []]
+        aruco = {}
+        print("slamTag--", slam.taglist)
+        markers = slam.markers.T
+        for i in range(len(slam.taglist)):
+            id = 'aruco' + str(slam.taglist[i]) + '_0'
+            print("slam_Marker", markers[i])
+            (y, x) = markers[i]
+            aruco[id] = {'y': y, 'x': x}
+        with open('aruco_true.txt', 'w') as map_file:
+            json.dump(aruco, map_file, indent=2)
             
     def write_image(self, image, slam):
         img_fname = "{}pred_{}.png".format(self.folder, self.image_count)

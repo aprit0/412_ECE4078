@@ -1,5 +1,5 @@
 # m4 - autonomous fruit searching
-# Shamelessly stolen from Aidan's repo https://github.com/aprit0/Robot-4191/blob/main/Robot-4191/SPAM.py
+# stolen from Aidan's repo https://github.com/aprit0/Robot-4191/blob/main/Robot-4191/SPAM.py
 # basic python packages
 import sys, os
 import cv2
@@ -32,6 +32,7 @@ sys.path.insert(0, "{}/slam".format(os.getcwd()))
 from slam.ekf import EKF
 from slam.robot import Robot
 import slam.aruco_detector as aruco
+from slam.mapping_utils import *
 
 # import CV components
 sys.path.insert(0,"{}/network/".format(os.getcwd()))
@@ -58,6 +59,12 @@ class Operate:
         self.ekf = self.init_ekf(args.calib_dir, args.ip)
         self.aruco_det = aruco.aruco_detector(
             self.ekf.robot, marker_length = 0.07) # size of the ARUCO markers
+
+        self.choiceSlam = input("Do you want to load map (default loads map)?")
+        if self.choiceSlam:
+            self.ekf.load_map()
+        else:
+            pass
 
         if args.save_data:
             self.data = dh.DatasetWriter('record')
@@ -89,12 +96,17 @@ class Operate:
             self.detector = None
             self.network_vis = cv2.imread('pics/8bit/detector_splash.png')
         else:
-            self.detector = Detector(args.ckpt, use_gpu=False)
-            self.network_vis = np.ones((240, 320,3))* 100
+            pass
+            #self.detector = Detector(args.ckpt, use_gpu=False)
+            #self.network_vis = np.ones((240, 320,3))* 100
         # self.bg = pygame.image.load('pics/gui_mask.jpg')
 
         # ----
         self.robot_pose = [0., 0., 0.]
+
+        # slam map load
+
+
 
     # wheel control
     def control(self):
@@ -168,6 +180,8 @@ class Operate:
         baseline = np.loadtxt(fileB, delimiter=',')
         robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
         return EKF(robot)
+
+
 
     # save SLAM map
     def record_data(self):
@@ -357,7 +371,7 @@ class Circle:
         return False
 
 
-def read_True_map(fname):
+def read_True_map(fnameArcuo, fnameFruit):
     """read the ground truth map and output the pose of the aruco markers and 3 types of target fruit to search
 
     @param fname: filename of the map
@@ -366,33 +380,37 @@ def read_True_map(fname):
         2) locations of the target fruits, [[x1, y1], ..... [xn, yn]]
         3) locations of aruco markers in order, i.e. pos[9, :] = position of the aruco10_0 marker
     """
-    with open(fname, 'r') as fd:
-        gt_dict = json.load(fd)
-        fruit_list = []
-        fruit_True_pos = []
-        aruco_True_pos = np.empty([11, 2])
-        aruco_True_pos[0] = [50,50]
-        # remove unique id of targets of the same type
-        for key in gt_dict:
-            x = np.round(gt_dict[key]['x'], 1)  # reading every x coordinates
-            y = np.round(gt_dict[key]['y'], 1)  # reading every y coordinates
+    f_aruco = open(fnameArcuo, 'r')
+    gt_dict = json.load(f_aruco)
+    f_fruit = open(fnameFruit, 'r')
+    fr_dict = json.load(f_fruit)
+    gt_dict.update(fr_dict)
+    print('loaded both dictionaries', gt_dict)
+    fruit_list = []
+    fruit_True_pos = []
+    aruco_True_pos = np.empty([11, 2])
+    aruco_True_pos[0] = [50,50]
+    # remove unique id of targets of the same type
+    for key in gt_dict:
+        x = np.round(gt_dict[key]['x'], 1)  # reading every x coordinates
+        y = np.round(gt_dict[key]['y'], 1)  # reading every y coordinates
 
-            if key.startswith('aruco'):
-                if key.startswith('aruco10'):
-                    aruco_True_pos[10][0] = x
-                    aruco_True_pos[10][1] = y
-                else:
-                    marker_id = int(key[5])  # giving id to aruco markers
-                    aruco_True_pos[marker_id][0] = x
-                    aruco_True_pos[marker_id][1] = y
+        if key.startswith('aruco'):
+            if key.startswith('aruco10'):
+                aruco_True_pos[10][0] = x
+                aruco_True_pos[10][1] = y
             else:
-                fruit_list.append(key[:-2])
-                if len(fruit_True_pos) == 0:
-                    fruit_True_pos = np.array([[x, y]])
-                else:
-                    fruit_True_pos = np.append(fruit_True_pos, [[x, y]], axis=0)
+                marker_id = int(key[5])  # giving id to aruco markers
+                aruco_True_pos[marker_id][0] = x
+                aruco_True_pos[marker_id][1] = y
+        else:
+            fruit_list.append(key[:-2])
+            if len(fruit_True_pos) == 0:
+                fruit_True_pos = np.array([[x, y]])
+            else:
+                fruit_True_pos = np.append(fruit_True_pos, [[x, y]], axis=0)
 
-        return fruit_list, fruit_True_pos, aruco_True_pos
+    return fruit_list, fruit_True_pos, aruco_True_pos
 
 
 def read_search_list():
@@ -479,11 +497,14 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
+
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
     parser.add_argument("--save_data", action='store_true')
     parser.add_argument("--play_data", action='store_true')
     parser.add_argument("--ckpt", default='network/scripts/model/model.best.pth')
-    parser.add_argument("--map", type=str, default='M4_3fruits_lab4.txt')
+    #parser.add_argument("--map", type=str, default='M4_3fruits_lab4.txt')
+    parser.add_argument("--map", type=str, default='aruco_true.txt')
+    parser.add_argument("--mapFruit", type=str, default='./lab_output/targets.txt')
     parser.add_argument("--ip", metavar='', type=str, default='localhost')
     parser.add_argument("--port", metavar='', type=int, default=40000)
     args, _ = parser.parse_known_args()
@@ -541,7 +562,8 @@ if __name__ == "__main__":
     ########################################################################################
 
     # read in the True map
-    fruits_list, fruits_True_pos, aruco_True_pos = read_True_map(args.map)
+    #fruits_list, fruits_True_pos, aruco_True_pos = read_True_map(args.map)
+    fruits_list, fruits_True_pos, aruco_True_pos = read_True_map(args.map, args.mapFruit)
     search_list = read_search_list()
     print_target_fruits_pos(search_list, fruits_list, fruits_True_pos)
 

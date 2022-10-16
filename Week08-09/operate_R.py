@@ -153,7 +153,15 @@ class Operate:
         robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
         return EKF(robot)
 
-    # save SLAM map
+    # Load Slam map
+    def slamMapLoad(self, fname="./lab_output/slam_map.txt"):
+        with open(fname,'r') as map_file:
+            map_attributes = json.load(map_file)
+        self.taglist = map_attributes["taglist"]
+        self.markers = np.array(map_attributes["markers"])
+        self.covariance = np.array(map_attributes["covariance"])
+        self.check_valid()
+
     def record_data(self):
         if self.command['output']:
             self.output.write_map(self.ekf)
@@ -228,6 +236,36 @@ class Operate:
                                             False, text_colour)
         canvas.blit(caption_surface, (position[0], position[1] - 25))
 
+    # get stuff from targetpost Est
+    def getTargetPose(self):
+        fileK = "{}intrinsic.txt".format('./calibration/param/')
+        camera_matrix = np.loadtxt(fileK, delimiter=',')
+        base_dir = Path('./')
+
+        # a dictionary of all the saved detector outputs
+        image_poses = {}
+        with open(base_dir / 'lab_output/images.txt') as fp:
+            for line in fp.readlines():
+                pose_dict = ast.literal_eval(line)
+                image_poses[pose_dict['imgfname']] = pose_dict['pose']
+
+        # estimate pose of targets in each detector output
+        target_map = {}
+        for file_path in image_poses.keys():
+            print(file_path)
+            completed_img_dict = get_image_info(base_dir, file_path, image_poses[file_path])
+            target_map[file_path] = estimate_pose(base_dir, camera_matrix, completed_img_dict)
+
+        # merge the estimations of the targets so that there are at most 3 estimations of each target type
+        target_est = merge_estimations(target_map)
+
+        # save target pose estimations
+        with open(base_dir / 'lab_output/targets.txt', 'w') as fo:
+            print(target_est)
+            json.dump(target_est, fo)
+
+        print('Estimations saved!')
+        ################################################################################
 
     # keyboard teleoperation
     def update_keyboard(self):
@@ -254,6 +292,10 @@ class Operate:
             # save SLAM map
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
                 self.command['output'] = True
+                # print('Maerkd--', self.ekf.markers)
+                # print('#####################')
+                # print('tags--', self.ekf.taglist)
+                # print('###########################')
             # reset SLAM map
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
                 if self.double_reset_comfirm == 0:
@@ -294,7 +336,8 @@ class Operate:
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 self.quit = True
         if self.quit:
-            pass
+            self.getTargetPose()
+            # run auto_fruit_search_0
             pygame.quit()
             sys.exit()
 
