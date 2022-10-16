@@ -458,6 +458,10 @@ class controller(Operate):
         drive_meas = measure.Drive(lv, rv, time.time() - self.control_clock)  # this is our drive message to update the slam
         self.control_clock = time.time()
         self.update_slam(drive_meas)
+<<<<<<< HEAD
+        time.sleep(0.01)
+=======
+>>>>>>> M5
         self.pose = self.get_pose()
         
         
@@ -515,6 +519,15 @@ class controller(Operate):
         self.operate.take_pic()
         lms, aruco_img = self.operate.aruco_det.detect_marker_positions(self.operate.img)
         is_success = self.operate.ekf.recover_from_pause(lms)
+<<<<<<< HEAD
+        if True:#not is_success:
+            print('NOT SUCCESS')
+            self.operate.ekf.predict(drive_meas)
+            self.operate.ekf.add_landmarks(lms)  # will only add if something new is seen
+            self.operate.ekf.update(lms)
+        else:
+            print('----------------success----')
+=======
         print('NOT SUCCESS')
         self.operate.ekf.predict(drive_meas)
         self.operate.ekf.add_landmarks(lms)  # will only add if something new is seen
@@ -524,6 +537,7 @@ class controller(Operate):
             print('----------------success----')
             # print('pose', self.pose)
             # time.sleep(2)
+>>>>>>> M5
 
 #####################################################################################################
 
@@ -538,18 +552,30 @@ def pose_to_pixel(pose,map_dimension,map_resolution):
     map = lambda old_value, old_min, old_max, new_min, new_max: ((old_value - old_min) / (old_max - old_min)) * (
                 new_max - new_min) + new_min
     pixel_x = map(pose[0], morigin, -morigin,
+<<<<<<< HEAD
+                  1, (map_dimension / map_resolution) - 1)
+    pixel_y = map(pose[1], morigin, -morigin,
+                  1, (map_dimension / map_resolution) - 1)
+=======
                   1, (map_dimension / map_resolution))
     pixel_y = map(pose[1], morigin, -morigin,
                   1, (map_dimension / map_resolution))
+>>>>>>> M5
     return int(pixel_x), int(pixel_y)
 
 def pixel_to_pose(pixel,map_dimension,map_resolution):
     morigin = map_dimension / 2.0
     map = lambda old_value, old_min, old_max, new_max, new_min: ((old_value - old_min) / (old_max - old_min)) * (
                 new_max - new_min) + new_min
+<<<<<<< HEAD
+    pose_x = map(pixel[0], (map_dimension / map_resolution) - 1, 1, morigin,
+                 -morigin)
+    pose_y = map(pixel[1],(map_dimension / map_resolution) - 1,1, morigin,
+=======
     pose_x = map(pixel[0], (map_dimension / map_resolution), 1, -morigin,
                  morigin)
     pose_y = map(pixel[1], 1, (map_dimension / map_resolution), morigin,
+>>>>>>> M5
                  -morigin)
     return pose_x, pose_y
 
@@ -564,7 +590,11 @@ if __name__ == "__main__":
     parser.add_argument("--save_data", action='store_true')
     parser.add_argument("--play_data", action='store_true')
     parser.add_argument("--ckpt", default='network/scripts/model/model.best.pth')
+<<<<<<< HEAD
+    parser.add_argument("--map", type=str, default='M4_true_map_5fruits.txt')
+=======
     parser.add_argument("--map", type=str, default='M4_true_map_3fruits.txt')
+>>>>>>> M5
     parser.add_argument("--ip", metavar='', type=str, default='localhost')
     parser.add_argument("--port", metavar='', type=int, default=40000)
     args, _ = parser.parse_known_args()
@@ -655,6 +685,10 @@ if __name__ == "__main__":
         item = item_in_map(str(i), aruco_True_pos[i])
         aruco_list.append(item)
     #checking
+<<<<<<< HEAD
+    time.sleep(2)
+=======
+>>>>>>> M5
     # aruco_list[0].tag = str(10)
     operate.operate.ekf.add_landmarks(aruco_list)  # will add known
     # print(operate.ekf.markers)
@@ -679,7 +713,11 @@ if __name__ == "__main__":
 
     # --- occupancy grid
     map_resolution = 0.1 # metres / pixel
+<<<<<<< HEAD
+    map_dimension = 1.4 * 2 # metres
+=======
     map_dimension = 1.4 * 3 # metres
+>>>>>>> M5
     map_size = int(map_dimension / map_resolution)
     map_arr = np.ones((map_size, map_size)) # shape = 28*28
     '''
@@ -697,7 +735,11 @@ if __name__ == "__main__":
     '''
     def pad(map, item_list, full_pad=True):
         if full_pad:
+<<<<<<< HEAD
+            pad = 2
+=======
             pad = 3
+>>>>>>> M5
         else:
             pad = 1
         for item in item_list:
@@ -707,6 +749,8 @@ if __name__ == "__main__":
                 pass
         return map
 
+<<<<<<< HEAD
+=======
     def str_pull(route):
         if len(route) > 2:
             new_path = []#[route[0]]
@@ -723,6 +767,7 @@ if __name__ == "__main__":
         else:
             return route
 
+>>>>>>> M5
     x_start,y_start = pose_to_pixel(start,map_dimension,map_resolution)
     start_map_frame = [x_start,y_start]
     goal_map_frame = []
@@ -745,7 +790,11 @@ if __name__ == "__main__":
     # debug start and end
     map_arr = np.array(map_arr, dtype=np.float32)
     for g in goal_map_frame:
+<<<<<<< HEAD
+        map_arr[start_map_frame[0], start_map_frame[1]] = 1
+=======
         map_arr[start_map_frame[0] - 1: start_map_frame[0] +1, start_map_frame[1] - 1 : start_map_frame[1] - 1] = 1
+>>>>>>> M5
         path = pyastar2d.astar_path(map_arr, start_map_frame, g, allow_diagonal=True)
         print('map', map_arr.shape, map_dimension, map_resolution)
         print('start/goal val', map_arr[start_map_frame[0], start_map_frame[1]], map_arr[goal_map_frame[0], goal_map_frame[1]])
@@ -755,6 +804,22 @@ if __name__ == "__main__":
         while type(path) == type(None):
             new_goal = [i - 1 if i > int(map_size/2) else i + 1 for i in new_goal]
             new_start = [i - 1 if i > int(map_size/2) else i + 1 for i in new_start]
+<<<<<<< HEAD
+            map_arr[new_start[0], new_start[1]] = 1
+            map_arr[new_goal[0], new_goal[1]] = 1
+            path = pyastar2d.astar_path(map_arr, new_start, new_goal, allow_diagonal=True)
+            print('path failed', new_goal, goal_map_frame, path)
+            time.sleep(0.5)
+
+        path_pose = []
+
+        # converting from map frame to pose
+        for item in path:
+            x_obs, y_obs = pixel_to_pose(item, map_dimension, map_resolution)
+            path_pose.append([x_obs, y_obs])
+
+
+=======
             map_arr[new_start[0] - 1: new_start[0] +1, new_start[1] - 1 : new_start[1] - 1] = 1
             map_arr[new_goal[0] - 1: new_goal[0] +1, new_goal[1] - 1 : new_goal[1] - 1] = 1
             path = pyastar2d.astar_path(map_arr, new_start, new_goal, allow_diagonal=True)
@@ -789,11 +854,23 @@ if __name__ == "__main__":
             path_pose.append([x_obs, y_obs])
 
 
+>>>>>>> M5
         # for g in goal:
         # map: wall = np.inf, empty space = 1.
         # String pulling
         # def str_pull: identifies vertecies in lines, and removes redundant waypoints using gradients
 
+<<<<<<< HEAD
+        route = [[float(i[0]), float(i[1])] for i in path_pose]
+        #route = route[::-1]
+
+        _ = input("press enter to start moving:... \nstart -- {},\nend -- {},\nroute -- {}".format(
+            (pixel_to_pose(new_start, map_dimension, map_resolution), start), (pixel_to_pose(new_goal, map_dimension, map_resolution), goal), route))
+        start = operate.get_path(route)
+
+        x_start,y_start = pose_to_pixel(start,map_dimension,map_resolution)
+        start_map_frame = [x_start,y_start]
+=======
         
 
         #route = route[::-1]
@@ -805,3 +882,4 @@ if __name__ == "__main__":
         x_start,y_start = pose_to_pixel(start,map_dimension,map_resolution)
         start_map_frame = [x_start,y_start]
         break
+>>>>>>> M5
