@@ -42,9 +42,15 @@ class Detector:
         dt = time.time() - tick
         print(f'Inference Time {dt:.2f}s, approx {1/dt:.2f}fps', end="\r")
         detPandas = pred.pandas().xyxy[0]
-        print(detPandas)
         # yolo colormap
-        colour_map = self.visualise_yolo(np_img, detPandas)
+
+        if not detPandas.empty:
+            colour_map = self.visualise_yolo(np_img, detPandas)
+            # deleting rows if conf <0.75
+            detPandas = detPandas.drop(detPandas[detPandas.confidence<0.75].index)
+            print("detPandas", detPandas)
+        else:
+            colour_map = cv2.resize(np_img, (320, 240), cv2.INTER_NEAREST)
         #print(np.shape(color_mapYolo))
         #colour_map = self.visualise_output(pred)
         return detPandas, colour_map

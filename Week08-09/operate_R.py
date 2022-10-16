@@ -6,6 +6,7 @@ import cv2
 import os, sys
 import time
 from PIL import Image
+from TargetPoseEst import *
 
 # import utility functions
 sys.path.insert(0, "{}/utility".format(os.getcwd()))
@@ -124,7 +125,7 @@ class Operate:
         if self.command['inference'] and self.detector is not None:
             self.detector_output, self.network_vis = self.detector.detect_single_image(self.img)
             self.command['inference'] = False
-            self.file_output = (self.detector_output, self.ekf)
+            self.file_output = (self.network_vis, self.ekf)
             self.notification = f'{len(self.detector_output.index)} target type(s) detected'
 
     def save_image(self):
@@ -161,8 +162,9 @@ class Operate:
         # save inference with the matching robot pose and detector labels
         if self.command['save_inference']:
             if self.file_output is not None:
-                # image = cv2.cvtColor(self.file_output[0], cv2.COLOR_RGB2BGR)
-                self.pred_fname = self.output.write_image(self.file_output[0],
+                #image = cv2.cvtColor(self.file_output[0], cv2.COLOR_RGB2BGR)
+                image = cv2.cvtColor(self.img, cv2.COLOR_RGB2BGR)
+                self.pred_fname = self.output.write_image(image,
                                                           self.file_output[1])
                 self.notification = f'Prediction is saved to {operate.pred_fname}'
             else:
@@ -226,6 +228,7 @@ class Operate:
                                             False, text_colour)
         canvas.blit(caption_surface, (position[0], position[1] - 25))
 
+
     # keyboard teleoperation
     def update_keyboard(self):
         for event in pygame.event.get():
@@ -247,6 +250,7 @@ class Operate:
             # save image
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_i:
                 self.command['save_image'] = True
+
             # save SLAM map
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
                 self.command['output'] = True
@@ -290,6 +294,7 @@ class Operate:
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 self.quit = True
         if self.quit:
+            pass
             pygame.quit()
             sys.exit()
 
