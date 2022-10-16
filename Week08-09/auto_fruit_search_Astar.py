@@ -349,7 +349,7 @@ class controller(Operate):
         self.angle_between_points = lambda pose, goal: np.arctan2(goal[1] - pose[1], goal[0] - pose[0])
 
         # variables
-        self.get_pose = lambda: [i[0] for i in self.operate.ekf.robot.state[:3]]
+        self.pose = self.operate.ekf.robot.state[:3] # x, y, theta
         self.pose = self.get_pose()  # x, y, theta
         self.state = {'Turn': 0}
         self.waypoints = []
@@ -375,6 +375,14 @@ class controller(Operate):
            # visualise
            self.operate.draw(canvas)
            pygame.display.update()
+    def get_pose(self):
+        old_pose = [float(i) for i in self.operate.ekf.robot.state[:3]]
+        yaw = old_pose[2]
+        old_pose[2] = yaw
+
+        new_pose = old_pose#[old_pose[i] * 0.8 + self.pose[i] * 0.2 for i in range(len(self.pose))]
+        return new_pose
+        
 
     def get_path(self, path):
         self.goal_reached = False
@@ -396,10 +404,11 @@ class controller(Operate):
         '''
         self.control_clock = time.time()
         while not self.goal_reached:
+            self.pose=self.get_pose()
             angle_to_rotate = self.calculate_angle_from_goal()
             dist_to_goal = self.dist_between_points(self.pose[:2], self.goal)
             print('pose, goal', self.pose, self.goal)
-            print('Dist2Goal: {:.3f} || Ang2Goal: {:.3f}'.format(dist_to_goal, math.degrees(angle_to_rotate)))
+            print('Dist2Goal: {:.3f} || Ang2Goal: {:.3f} || Path: {}'.format(dist_to_goal, math.degrees(angle_to_rotate), len(self.waypoints)))
             if dist_to_goal > self.dist_from_goal:
                 # Check if we need to rotate or drive straight
                 if (self.state['Turn'] == 0 and abs(angle_to_rotate) > self.max_angle) or self.state['Turn'] == 1:
@@ -434,36 +443,83 @@ class controller(Operate):
         curve = 0.0
         direction = np.sign(ang_to_rotate)
         turn_speed = 10
-        drive_speed = 50
-
+        drive_speed = 30
+        t_0 = 0
         if direction == 0 and value != 0:
             # drive straight
             # self.operate.command['motion'] = [1, 0]
-            lv, rv = self.operate.pibot.set_velocity([1, 0], tick=drive_speed, time=0)
+            lv, rv = self.operate.pibot.set_velocity([1, 0], tick=drive_speed, time=t_0)
         else:
             # turn
             lv, rv = self.operate.pibot.set_velocity([0, int(direction)], turning_tick=turn_speed,
-                                             time=0)  # set_velocity([0, dir], turning_tick=wheel_vel, time=turn_time)
+                                             time=t_0)  # set_velocity([0, dir], turning_tick=wheel_vel, time=turn_time)
             # self.operate.command['motion'] = [0, direction]
+        # time.sleep(t_0)
         drive_meas = measure.Drive(lv, rv, time.time() - self.control_clock)  # this is our drive message to update the slam
         self.control_clock = time.time()
         self.update_slam(drive_meas)
+<<<<<<< HEAD
         time.sleep(0.01)
+=======
+>>>>>>> M5
         self.pose = self.get_pose()
+        
+        
 
     def calculate_angle_from_goal(self):
-        angle_to_rotate = self.angle_between_points(self.pose, self.goal) - self.pose[2]
+        off = 100
+        angle_between_points = lambda pose, goal: np.arctan2(goal[1] - pose[1], goal[0] - pose[0])
+        yaw = self.pose[2]
+        print('intial pose: ', self.pose)
+        print('-------------------------------')
+        print('yaw: ', yaw)
+        vector = angle_between_points(self.pose, self.goal)
+        print('ideal vector: ', vector)
+        angle_to_rotate = vector - yaw
+        print('angle to rotate: ', angle_to_rotate)
+        if angle_to_rotate < -np.pi:
+            print('JUMP0')
+            angle_to_rotate += 2 * np.pi
+            print('new angle to rotate: ', angle_to_rotate)
+        if angle_to_rotate > np.pi:
+            print('JUMP1')
+            angle_to_rotate -= 2 * np.pi
+            print('new angle to rotate: ', angle_to_rotate)
+        '''
+        if yaw < -1 * np.pi: # -3.14 -/-> -6.3
+            print('FIX YAW0', yaw)
+            yaw += 2 * np.pi
+            print('FIX YAW0', yaw)
+        elif yaw > 1 * np.pi: # 3.14
+            print('FIX YAW1', yaw)
+            yaw -= 2 * np.pi
+            print('FIX YAW1', yaw)
+        else:
+            pass
+        self.pose[2] = yaw
+        print('next pose/goal: ', self.pose, self.goal)
+
+        angle = angle_between_points(self.pose, self.goal)
+        angle_to_rotate = angle - self.pose[2]
+        print('ang0:', angle_to_rotate, angle, angle - self.pose[2])
         # Ensures minimum rotation
         if angle_to_rotate < -np.pi:
+            print('JUMP0', angle_to_rotate)
             angle_to_rotate += 2 * np.pi
         if angle_to_rotate > np.pi:
+            print('JUMP1', angle_to_rotate)
             angle_to_rotate -= 2 * np.pi
+        print('ang1:', angle_to_rotate)
+        print('xxxxxxxxxxxENDxxxxxxxxxxxxxxxxxxxxx')
+        '''
+
         return angle_to_rotate
 
     def update_slam(self, drive_meas):
         self.operate.take_pic()
         lms, aruco_img = self.operate.aruco_det.detect_marker_positions(self.operate.img)
         is_success = self.operate.ekf.recover_from_pause(lms)
+<<<<<<< HEAD
         if True:#not is_success:
             print('NOT SUCCESS')
             self.operate.ekf.predict(drive_meas)
@@ -471,6 +527,17 @@ class controller(Operate):
             self.operate.ekf.update(lms)
         else:
             print('----------------success----')
+=======
+        print('NOT SUCCESS')
+        self.operate.ekf.predict(drive_meas)
+        self.operate.ekf.add_landmarks(lms)  # will only add if something new is seen
+        self.operate.ekf.update(lms)
+        self.pose = self.get_pose()
+        if is_success:
+            print('----------------success----')
+            # print('pose', self.pose)
+            # time.sleep(2)
+>>>>>>> M5
 
 #####################################################################################################
 
@@ -485,18 +552,30 @@ def pose_to_pixel(pose,map_dimension,map_resolution):
     map = lambda old_value, old_min, old_max, new_min, new_max: ((old_value - old_min) / (old_max - old_min)) * (
                 new_max - new_min) + new_min
     pixel_x = map(pose[0], morigin, -morigin,
+<<<<<<< HEAD
                   1, (map_dimension / map_resolution) - 1)
     pixel_y = map(pose[1], morigin, -morigin,
                   1, (map_dimension / map_resolution) - 1)
+=======
+                  1, (map_dimension / map_resolution))
+    pixel_y = map(pose[1], morigin, -morigin,
+                  1, (map_dimension / map_resolution))
+>>>>>>> M5
     return int(pixel_x), int(pixel_y)
 
 def pixel_to_pose(pixel,map_dimension,map_resolution):
     morigin = map_dimension / 2.0
     map = lambda old_value, old_min, old_max, new_max, new_min: ((old_value - old_min) / (old_max - old_min)) * (
                 new_max - new_min) + new_min
+<<<<<<< HEAD
     pose_x = map(pixel[0], (map_dimension / map_resolution) - 1, 1, morigin,
                  -morigin)
     pose_y = map(pixel[1],(map_dimension / map_resolution) - 1,1, morigin,
+=======
+    pose_x = map(pixel[0], (map_dimension / map_resolution), 1, -morigin,
+                 morigin)
+    pose_y = map(pixel[1], 1, (map_dimension / map_resolution), morigin,
+>>>>>>> M5
                  -morigin)
     return pose_x, pose_y
 
@@ -511,7 +590,11 @@ if __name__ == "__main__":
     parser.add_argument("--save_data", action='store_true')
     parser.add_argument("--play_data", action='store_true')
     parser.add_argument("--ckpt", default='network/scripts/model/model.best.pth')
+<<<<<<< HEAD
     parser.add_argument("--map", type=str, default='M4_true_map_5fruits.txt')
+=======
+    parser.add_argument("--map", type=str, default='M4_true_map_3fruits.txt')
+>>>>>>> M5
     parser.add_argument("--ip", metavar='', type=str, default='localhost')
     parser.add_argument("--port", metavar='', type=int, default=40000)
     args, _ = parser.parse_known_args()
@@ -602,7 +685,10 @@ if __name__ == "__main__":
         item = item_in_map(str(i), aruco_True_pos[i])
         aruco_list.append(item)
     #checking
+<<<<<<< HEAD
     time.sleep(2)
+=======
+>>>>>>> M5
     # aruco_list[0].tag = str(10)
     operate.operate.ekf.add_landmarks(aruco_list)  # will add known
     # print(operate.ekf.markers)
@@ -627,7 +713,11 @@ if __name__ == "__main__":
 
     # --- occupancy grid
     map_resolution = 0.1 # metres / pixel
+<<<<<<< HEAD
     map_dimension = 1.4 * 2 # metres
+=======
+    map_dimension = 1.4 * 3 # metres
+>>>>>>> M5
     map_size = int(map_dimension / map_resolution)
     map_arr = np.ones((map_size, map_size)) # shape = 28*28
     '''
@@ -645,7 +735,11 @@ if __name__ == "__main__":
     '''
     def pad(map, item_list, full_pad=True):
         if full_pad:
+<<<<<<< HEAD
             pad = 2
+=======
+            pad = 3
+>>>>>>> M5
         else:
             pad = 1
         for item in item_list:
@@ -655,6 +749,25 @@ if __name__ == "__main__":
                 pass
         return map
 
+<<<<<<< HEAD
+=======
+    def str_pull(route):
+        if len(route) > 2:
+            new_path = []#[route[0]]
+            deriv = lambda p0, p1: (p1[1] - p0[1])/(p1[0] - p0[0] + 1e-16)
+            dt_old = deriv(route[1], route[0])
+            for i in range(2, len(route)):
+                dt = deriv(route[i], route[i-1])
+                if dt == dt_old:
+                    pass
+                else:
+                    new_path.append(route[i])
+                dt_old = dt
+            return new_path
+        else:
+            return route
+
+>>>>>>> M5
     x_start,y_start = pose_to_pixel(start,map_dimension,map_resolution)
     start_map_frame = [x_start,y_start]
     goal_map_frame = []
@@ -677,7 +790,11 @@ if __name__ == "__main__":
     # debug start and end
     map_arr = np.array(map_arr, dtype=np.float32)
     for g in goal_map_frame:
+<<<<<<< HEAD
         map_arr[start_map_frame[0], start_map_frame[1]] = 1
+=======
+        map_arr[start_map_frame[0] - 1: start_map_frame[0] +1, start_map_frame[1] - 1 : start_map_frame[1] - 1] = 1
+>>>>>>> M5
         path = pyastar2d.astar_path(map_arr, start_map_frame, g, allow_diagonal=True)
         print('map', map_arr.shape, map_dimension, map_resolution)
         print('start/goal val', map_arr[start_map_frame[0], start_map_frame[1]], map_arr[goal_map_frame[0], goal_map_frame[1]])
@@ -687,6 +804,7 @@ if __name__ == "__main__":
         while type(path) == type(None):
             new_goal = [i - 1 if i > int(map_size/2) else i + 1 for i in new_goal]
             new_start = [i - 1 if i > int(map_size/2) else i + 1 for i in new_start]
+<<<<<<< HEAD
             map_arr[new_start[0], new_start[1]] = 1
             map_arr[new_goal[0], new_goal[1]] = 1
             path = pyastar2d.astar_path(map_arr, new_start, new_goal, allow_diagonal=True)
@@ -701,11 +819,48 @@ if __name__ == "__main__":
             path_pose.append([x_obs, y_obs])
 
 
+=======
+            map_arr[new_start[0] - 1: new_start[0] +1, new_start[1] - 1 : new_start[1] - 1] = 1
+            map_arr[new_goal[0] - 1: new_goal[0] +1, new_goal[1] - 1 : new_goal[1] - 1] = 1
+            path = pyastar2d.astar_path(map_arr, new_start, new_goal, allow_diagonal=True)
+            print('path failed', new_goal, goal_map_frame)
+            time.sleep(0.5)
+
+
+        route = [[float(i[0]), float(i[1])] for i in path]
+        print('pre_route\n', len(route))
+        route = str_pull(route)
+        print('post_route\n', len(route))
+
+        path_pose = []
+        map_arr[map_arr==np.inf] = 255
+        map_arr[map_arr==1] = 1
+        # import scipy.misc
+        from PIL import Image
+        # attach path to map
+        for item in route:
+            map_arr[int(item[0]), int(item[1])] = 128
+        #im_array = np.array([map_arr, map_arr, map_arr]).T
+        #print(im_array.shape)
+        im = Image.fromarray(map_arr)
+        im = im.convert('RGB')
+
+        im.save("your_file.png")
+        #scipy.misc.imsave('outfile.jpg', map_arr)
+
+        # converting from map frame to pose
+        for item in path:
+            x_obs, y_obs = pixel_to_pose(item, map_dimension, map_resolution)
+            path_pose.append([x_obs, y_obs])
+
+
+>>>>>>> M5
         # for g in goal:
         # map: wall = np.inf, empty space = 1.
         # String pulling
         # def str_pull: identifies vertecies in lines, and removes redundant waypoints using gradients
 
+<<<<<<< HEAD
         route = [[float(i[0]), float(i[1])] for i in path_pose]
         #route = route[::-1]
 
@@ -715,3 +870,16 @@ if __name__ == "__main__":
 
         x_start,y_start = pose_to_pixel(start,map_dimension,map_resolution)
         start_map_frame = [x_start,y_start]
+=======
+        
+
+        #route = route[::-1]
+
+        _ = input("press enter to start moving:... \nstart -- {},\nend -- {},\nroute -- {}".format(
+            (pixel_to_pose(new_start, map_dimension, map_resolution), start), (pixel_to_pose(new_goal, map_dimension, map_resolution), goal), route))
+        start = operate.get_path(path_pose)
+
+        x_start,y_start = pose_to_pixel(start,map_dimension,map_resolution)
+        start_map_frame = [x_start,y_start]
+        break
+>>>>>>> M5
