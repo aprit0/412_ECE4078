@@ -232,7 +232,7 @@ if __name__ == "__main__":
 
     # save target pose estimations
     with open(base_dir / 'lab_output/targets.txt', 'w') as fo:
-        print(target_est)
+        print('target_pose_est\n', target_est)
         json.dump(target_est, fo)
 
     print('Estimations saved!')

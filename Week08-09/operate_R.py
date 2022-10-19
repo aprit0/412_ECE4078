@@ -18,7 +18,7 @@ import shutil  # python package for file operations
 
 # import SLAM components you developed in M2
 sys.path.insert(0, "{}/slam".format(os.getcwd()))
-from slam.ekf import EKF
+from slam.ekf_old import EKF
 from slam.robot import Robot
 import slam.aruco_detector as aruco
 
@@ -89,7 +89,7 @@ class Operate:
             lv, rv = self.pibot.set_velocity()
         else:
             lv, rv = self.pibot.set_velocity(
-                self.command['motion'])
+                self.command['motion'], tick=40, turning_tick=10)
         if not self.data is None:
             self.data.write_keyboard(lv, rv)
         dt = time.time() - self.control_clock
@@ -261,7 +261,7 @@ class Operate:
 
         # save target pose estimations
         with open(base_dir / 'lab_output/targets.txt', 'w') as fo:
-            print(target_est)
+            print('operate target_est\n', target_est)
             json.dump(target_est, fo)
 
         print('Estimations saved!')
@@ -336,10 +336,18 @@ class Operate:
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 self.quit = True
         if self.quit:
-            self.getTargetPose()
-            # run auto_fruit_search_0
-            pygame.quit()
-            sys.exit()
+            try:
+                x = int(input('Do you want to quit? 0||1'))
+            except:
+                print('Retry')
+                x = 0
+            if x:
+                self.getTargetPose()
+                # run auto_fruit_search_0
+                pygame.quit()
+                sys.exit()
+            else:
+                self.quit = False
 
 
 if __name__ == "__main__":
@@ -351,7 +359,7 @@ if __name__ == "__main__":
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
     parser.add_argument("--save_data", action='store_true')
     parser.add_argument("--play_data", action='store_true')
-    parser.add_argument("--ckpt", default='network/scripts/model/model.best.pth')
+    parser.add_argument("--ckpt", default='/home/ece4078/412_ECE4078/Week08-09/network/scripts/model/model.best.pt')
     args, _ = parser.parse_known_args()
 
     pygame.font.init()

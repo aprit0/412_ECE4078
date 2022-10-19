@@ -14,7 +14,7 @@ class Detector:
         self.args = args
         #self.ckpt = ckpt
         #self.model = Resnet18Skip(args)
-        self.model = torch.hub.load('./yolov5', 'custom', path=ckpt, source='local')
+        self.model = torch.hub.load('./yolov5', 'custom', path=ckpt, source='local', force_reload=True)
         if torch.cuda.torch.cuda.device_count() > 0 and use_gpu:
             self.use_gpu = True
             self.model = self.model.cuda()
