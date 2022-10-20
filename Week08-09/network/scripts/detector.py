@@ -47,8 +47,9 @@ class Detector:
         if not detPandas.empty:
             colour_map = self.visualise_yolo(np_img, detPandas)
             # deleting rows if conf <0.75
+            print('Pandas LOW CONFIDENCES: ', detPandas[detPandas.confidence<0.75])
             detPandas = detPandas.drop(detPandas[detPandas.confidence<0.75].index)
-            print("detPandas", detPandas)
+            print("\ndetPandas", detPandas)
         else:
             colour_map = cv2.resize(np_img, (320, 240), cv2.INTER_NEAREST)
         #print(np.shape(color_mapYolo))
@@ -67,9 +68,9 @@ class Detector:
             predImg = cv2.rectangle(np_img, (xA,yA), (xB,yB), (255,0,0), 2)
         # resizing the image
         color_map = cv2.resize(predImg, (320, 240), cv2.INTER_NEAREST)
+        cv2.putText(color_map, f"{nn_output.name[0]}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36, 255, 12), 1)
         # wring text on bounding box
         return color_map
-
 
 
 

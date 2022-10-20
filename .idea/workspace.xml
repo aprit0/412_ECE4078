@@ -1,10 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AnalysisUIOptions">
+    <option name="SCOPE_TYPE" value="8" />
+    <option name="CUSTOM_SCOPE_NAME" value="Current File" />
+  </component>
   <component name="ChangeListManager">
     <list default="true" id="0695032c-d3e6-49d1-941c-741870d2fed5" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Week03-05/TRUEMAP.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Week03-05/TRUEMAP.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Week08-09/auto_fruit_search_Astar.py" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/auto_fruit_search_Astar.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/TargetPoseEst.py" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/TargetPoseEst.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/aruco_true.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/aruco_true.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/auto_fruit_search_1.py" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/auto_fruit_search_1.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/images.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/images.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/mapping_eval.py" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/mapping_eval.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_0.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_0.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_1.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_1.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_10.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_10.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_11.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_11.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_12.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_12.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_13.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_13.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_14.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_14.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_15.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_15.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_16.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_16.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_17.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_17.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_18.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_18.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_19.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_19.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_2.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_2.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_20.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_20.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_3.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_3.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_4.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_4.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_5.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_5.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_6.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_6.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_7.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_7.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_8.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_8.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/pred_9.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/pred_9.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/slam.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/slam.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/targets.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/targets.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/network/scripts/detector.py" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/network/scripts/detector.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/slam/ekf_old.py" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/slam/ekf_old.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Week08-09/your_file.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/your_file.png" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -27,9 +60,16 @@
     &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/antoniofernandochristophorus/Desktop/412_ECE4078&quot;
+    &quot;last_opened_file_path&quot;: &quot;/home/ece4078/412_ECE4078/Week08-09&quot;,
+    &quot;run.code.analysis.last.selected.profile&quot;: &quot;aDefault&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.keymap&quot;
   }
 }</component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/Week08-09" />
+    </key>
+  </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">

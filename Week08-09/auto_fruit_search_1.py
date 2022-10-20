@@ -2,6 +2,7 @@
 # stolen from Aidan's repo https://github.com/aprit0/Robot-4191/blob/main/Robot-4191/SPAM.py
 # basic python packages
 import sys, os
+# import Copy
 import cv2
 import numpy as np
 import json
@@ -9,8 +10,8 @@ import argparse
 import time
 import random
 import math
-from operate06 import *
 from matplotlib import pyplot as plt
+from TargetPoseEst import *
 import pyastar2d
 
 # import dependencies and set random seed
@@ -25,11 +26,12 @@ sys.path.insert(0, "{}/utility".format(os.getcwd()))
 from util.pibot import PenguinPi  # access the robot
 import util.DatasetHandler as dh  # save/load functions
 import util.measure as measure  # measurements
+import pygame  # python package for GUI
 import shutil  # python package for file operations
 
 # import SLAM components you developed in M2
 sys.path.insert(0, "{}/slam".format(os.getcwd()))
-from slam.ekf import EKF
+from slam.ekf_old import EKF
 from slam.robot import Robot
 import slam.aruco_detector as aruco
 from slam.mapping_utils import *
@@ -60,11 +62,11 @@ class Operate:
         self.aruco_det = aruco.aruco_detector(
             self.ekf.robot, marker_length=0.07)  # size of the ARUCO markers
 
-        self.choiceSlam = input("Do you want to load map (default loads map)?")
-        if self.choiceSlam:
-            self.ekf.load_map()
-        else:
-            pass
+        # self.choiceSlam = input("Do you want to load map (default loads map)?")
+        # if self.choiceSlam:
+        #     self.ekf.load_map()
+        # else:
+        #     pass
 
         if args.save_data:
             self.data = dh.DatasetWriter('record')
@@ -111,7 +113,7 @@ class Operate:
             lv, rv = self.pibot.set_velocity()
         else:
             lv, rv = self.pibot.set_velocity(
-                self.command['motion'])
+                self.command['motion'], tick=40, turning_tick=10)
         if not self.data is None:
             self.data.write_keyboard(lv, rv)
         dt = time.time() - self.control_clock
@@ -129,12 +131,12 @@ class Operate:
     def update_slam(self, drive_meas):
         self.take_pic()
         lms, self.aruco_img = self.aruco_det.detect_marker_positions(self.img)
-        # if self.request_recover_robot:
-        is_success = self.ekf.recover_from_pause(lms)
+        is_success = False
+        if self.request_recover_robot:
+            is_success = self.ekf.recover_from_pause(lms)
         if is_success:
             self.robot_pose = self.ekf.robot.state[:3]
         else:
-
             pose_predict = self.ekf.predict(drive_meas)
             self.ekf.add_landmarks(lms)
             pose_update = self.ekf.update(lms)
@@ -148,9 +150,11 @@ class Operate:
     # using computer vision to detect targets
     def detect_target(self):
         if self.command['inference'] and self.detector is not None:
+            im = self.img.copy()
+            im = cv2.cvtColor(im, cv2.COLOR_RGB2BGR)
             self.detector_output, self.network_vis = self.detector.detect_single_image(self.img)
             self.command['inference'] = False
-            self.file_output = (self.network_vis, self.ekf)
+            self.file_output = (im, self.ekf)
             self.notification = f'{len(self.detector_output.index)} target type(s) detected'
 
     # save raw images taken by the camera
@@ -196,6 +200,41 @@ class Operate:
                 self.notification = f'No prediction in buffer, save ignored'
             self.command['save_inference'] = False
 
+    @staticmethod
+    def put_caption(canvas, caption, position, text_colour=(200, 200, 200)):
+        caption_surface = TITLE_FONT.render(caption,
+                                            False, text_colour)
+        canvas.blit(caption_surface, (position[0], position[1] - 25))
+
+    # get stuff from targetpost Est
+    def getTargetPose(self):
+        fileK = "{}intrinsic.txt".format('./calibration/param/')
+        camera_matrix = np.loadtxt(fileK, delimiter=',')
+        base_dir = Path('./')
+
+        # a dictionary of all the saved detector outputs
+        image_poses = {}
+        with open(base_dir / 'lab_output/images.txt') as fp:
+            for line in fp.readlines():
+                pose_dict = ast.literal_eval(line)
+                image_poses[pose_dict['imgfname']] = pose_dict['pose']
+
+        # estimate pose of targets in each detector output
+        target_map = {}
+        for file_path in image_poses.keys():
+            print(file_path)
+            completed_img_dict = get_image_info(base_dir, file_path, image_poses[file_path])
+            target_map[file_path] = estimate_pose(base_dir, camera_matrix, completed_img_dict)
+        # merge the estimations of the targets so that there are at most 3 estimations of each target type
+        target_est = merge_estimations(target_map)
+        # save target pose estimations
+        with open(base_dir / 'lab_output/targets.txt', 'w') as fo:
+            print('operate target_est\n', target_est)
+            json.dump(target_est, fo)
+
+        print('Estimations saved!')
+        ################################################################################
+
     # keyboard teleoperation
     def update_keyboard(self):
         for event in pygame.event.get():
@@ -217,9 +256,14 @@ class Operate:
             # save image
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_i:
                 self.command['save_image'] = True
+
             # save SLAM map
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
                 self.command['output'] = True
+                # print('Maerkd--', self.ekf.markers)
+                # print('#####################')
+                # print('tags--', self.ekf.taglist)
+                # print('###########################')
             # reset SLAM map
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
                 if self.double_reset_comfirm == 0:
@@ -260,8 +304,18 @@ class Operate:
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 self.quit = True
         if self.quit:
-            pygame.quit()
-            sys.exit()
+            try:
+                x = int(input('Do you want to quit? 0||1'))
+            except:
+                print('Retry')
+                x = 0
+            if x:
+                self.getTargetPose()
+                # run auto_fruit_search_0
+                # pygame.quit()
+            else:
+                self.quit = False
+
 
     def get_distance_robot_to_goal(self):
         '''
@@ -316,6 +370,7 @@ class Operate:
         return alpha
 
     def drive_to_point(self):
+        self.request_recover_robot = True
         distance_to_goal = self.get_distance_robot_to_goal()
         angle_to_waypoint = self.get_angle_robot_to_goal()
 
@@ -346,6 +401,56 @@ class Operate:
         self.update_slam(drive_meas)
         print("Arrived at [{}, {}]".format(self.waypoint[0], self.waypoint[1]))
 
+    # paint the GUI
+    def draw(self, canvas):
+        canvas.blit(self.bg, (0, 0))
+        text_colour = (220, 220, 220)
+        v_pad = 40
+        h_pad = 20
+
+        # paint SLAM outputs
+        ekf_view = self.ekf.draw_slam_state(res=(320, 480 + v_pad),
+                                            not_pause=self.ekf_on)
+        canvas.blit(ekf_view, (2 * h_pad + 320, v_pad))
+        robot_view = cv2.resize(self.aruco_img, (320, 240))
+        self.draw_pygame_window(canvas, robot_view,
+                                position=(h_pad, v_pad)
+                                )
+
+        # for target detector (M3)
+        detector_view = cv2.resize(self.network_vis,
+                                   (320, 240), cv2.INTER_NEAREST)
+        self.draw_pygame_window(canvas, detector_view,
+                                position=(h_pad, 240 + 2 * v_pad)
+                                )
+
+        # canvas.blit(self.gui_mask, (0, 0))
+        self.put_caption(canvas, caption='SLAM', position=(2 * h_pad + 320, v_pad))
+        self.put_caption(canvas, caption='Detector',
+                         position=(h_pad, 240 + 2 * v_pad))
+        self.put_caption(canvas, caption='PiBot Cam', position=(h_pad, v_pad))
+
+        notifiation = TEXT_FONT.render(self.notification,
+                                       False, text_colour)
+        canvas.blit(notifiation, (h_pad + 10, 596))
+
+        time_remain = self.count_down - time.time() + self.start_time
+        if time_remain > 0:
+            time_remain = f'Count Down: {time_remain:03.0f}s'
+        elif int(time_remain) % 2 == 0:
+            time_remain = "Time Is Up !!!"
+        else:
+            time_remain = ""
+        count_down_surface = TEXT_FONT.render(time_remain, False, (50, 50, 50))
+        canvas.blit(count_down_surface, (2 * h_pad + 320 + 5, 530))
+        return canvas
+
+    @staticmethod
+    def draw_pygame_window(canvas, cv2_img, position):
+        cv2_img = np.rot90(cv2_img)
+        view = pygame.surfarray.make_surface(cv2_img)
+        view = pygame.transform.flip(view, True, False)
+        canvas.blit(view, position)
 
 class Circle:
     def __init__(self, c_x, c_y, radius=0.1):
@@ -385,8 +490,8 @@ def read_True_map(fnameArcuo, fnameFruit):
     aruco_True_pos[0] = [50, 50]
     # remove unique id of targets of the same type
     for key in gt_dict:
-        x = np.round(gt_dict[key]['x'], 1)  # reading every x coordinates
-        y = np.round(gt_dict[key]['y'], 1)  # reading every y coordinates
+        x = np.round(gt_dict[key]['y'], 1)  # reading every x coordinates
+        y = np.round(gt_dict[key]['x'], 1)  # reading every y coordinates
 
         if key.startswith('aruco'):
             if key.startswith('aruco10'):
@@ -412,7 +517,7 @@ def read_search_list():
     @return: search order of the target fruits
     """
     search_list = []
-    with open('7fruits_practice_map_search_list_3.txt', 'r') as fd:
+    with open('7fruits_practice_map_search_list_1.txt', 'r') as fd:
         fruits = fd.readlines()
 
         for fruit in fruits:
@@ -432,7 +537,7 @@ def print_target_fruits_pos(search_list, fruit_list, fruit_True_pos):
     print("search order:")
     n_fruit = 1
     for fruit in search_list:
-        for i in range(3):
+        for i in range(len(fruit_list)):
             if fruit == fruit_list[i]:
                 print('{}) {} at [{}, {}]'.format(n_fruit,
                                                   fruit,
@@ -495,7 +600,7 @@ if __name__ == "__main__":
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
     parser.add_argument("--save_data", action='store_true')
     parser.add_argument("--play_data", action='store_true')
-    parser.add_argument("--ckpt", default='network/scripts/model/model.best.pth')
+    parser.add_argument("--ckpt", default='/home/ece4078/412_ECE4078/Week08-09/network/scripts/model/model.best.pt')
     # parser.add_argument("--map", type=str, default='M4_3fruits_lab4.txt')
     parser.add_argument("--map", type=str, default='aruco_true.txt')
     parser.add_argument("--mapFruit", type=str, default='./lab_output/targets.txt')
@@ -538,7 +643,7 @@ if __name__ == "__main__":
     operate = Operate(args)
     ppi = PenguinPi(args.ip, args.port)
     # UNCOMMENT FOR M5
-    while start:
+    while not operate.quit:
         operate.update_keyboard()
         operate.take_pic()
         drive_meas = operate.control()
@@ -546,11 +651,11 @@ if __name__ == "__main__":
         operate.record_data()
         operate.save_image()
         operate.detect_target()
-        visualise
-    operate.draw(canvas)
-    pygame.display.update()
+        # visualise
+        operate.draw(canvas)
+        pygame.display.update()
 
-    operate.robot_pose = [[0], [0], [0]]
+    # operate.robot_pose = [[0], [0], [0]]
     ############################################################################################
     ########################################################################################
 
@@ -573,26 +678,25 @@ if __name__ == "__main__":
         f_dict[fruits_list[i]] = fruits_True_pos[i]
         fruits.append(item)
     print('fruits', fruits[0].coordinates, fruits[0].tag)
-    operate.ekf.add_landmarks(fruits)  # will add known
+    # operate.ekf.add_landmarks(fruits)  # will add known
     for i in range(len(aruco_True_pos)):
-        print(str(i), aruco_True_pos[i])
+        print('list aruco', str(i), aruco_True_pos[i])
         item = item_in_map(str(i), aruco_True_pos[i])
         aruco_list.append(item)
     # checking
     # aruco_list[0].tag = str(10)
-    operate.ekf.add_landmarks(aruco_list)  # will add known
+    # operate.ekf.add_landmarks(aruco_list)  # will add known
 
     # The following code is only a skeleton code the semi-auto fruit searching task
     # implement RRT, loop is for the number of fruits
 
     goal = [[f_dict[i][0], f_dict[i][1]] for i in search_list]
+    print('\n\n GOAL ----------------\n', goal, '\n\n')
     obstacles_aruco = []
     lms_xy = operate.ekf.markers[:2, :]
     for i in range(len(operate.ekf.markers[0, :])):
         obstacles_aruco.append(Circle(lms_xy[0, i], lms_xy[1, i]))
     expand_dis = 0.4
-    print("obstacles:", obstacles_aruco)
-    print(start)
     start = list(operate.ekf.robot.state[0:2, :])
 
     # --- occupancy grid
@@ -651,12 +755,14 @@ if __name__ == "__main__":
         obstacles_map_frame.append([x_obs, y_obs])
     map_arr = pad(map_arr, obstacles_map_frame, full_pad=False)
 
-    operate.robot_pose = [[0], [0], [0]]
-    operate.ekf.reset()
+    # operate.robot_pose = [[0], [0], [0]]
+    # operate.ekf.reset()
     # debug start and end
     map_arr = np.array(map_arr, dtype=np.float32)
+    null = pose_to_pixel([0., 0.], map_dimension, map_resolution)
+    map_arr[null[0] - 2: null[0] + 2, null[1] - 2: null[1] + 2] = 1
     for g in goal_map_frame:
-        map_arr[start_map_frame[0] - 1: start_map_frame[0] + 1, start_map_frame[1] - 1: start_map_frame[1] - 1] = 1
+        map_arr[start_map_frame[0] - 1: start_map_frame[0] + 1, start_map_frame[1] - 1: start_map_frame[1] + 1] = 1
         map_arr[map_arr == 1] = 5
         path = pyastar2d.astar_path(map_arr, start_map_frame, g, allow_diagonal=True)
         print('map', map_arr.shape, map_dimension, map_resolution)
@@ -707,8 +813,9 @@ if __name__ == "__main__":
         # def str_pull: identifies vertecies in lines, and removes redundant waypoints using gradients
 
         # route = route[::-1]
-
+        print('EKF pose', operate.ekf.get_state_vector(), operate.robot_pose)
         # _ = input("press enter to start moving:... \nstart -- {},\nend -- {},\nroute -- {}".format(pixel_to_pose(new_start, map_dimension, map_resolution), start), (pixel_to_pose(new_goal, map_dimension, map_resolution), goal), path_pose))
+        time.sleep(2)
         for point in path_pose:
             operate.waypoint = [point[0], point[1]]
             operate.drive_to_point()

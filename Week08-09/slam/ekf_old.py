@@ -95,6 +95,8 @@ class EKF:
         q = self.predict_covariance(raw_drive_meas)
         self.P = F @ self.P @ F.T + q
         self.set_state_vector(x)
+        state = self.get_state_vector()[0:3, :]
+        return state
 
 
 
@@ -129,6 +131,8 @@ class EKF:
         x = x_hat + K @ y
         self.set_state_vector(x)
         self.P = (np.eye(x.shape[0]) - K @ H) @ self.P
+        state = self.get_state_vector()[0:3, :]
+        return state
 
     def state_transition(self, raw_drive_meas):
         n = self.number_landmarks() * 2 + 3

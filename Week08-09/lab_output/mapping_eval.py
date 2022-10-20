@@ -132,6 +132,7 @@ def compute_slam_rmse(points1, points2):
     assert (points1.shape[1] == points2.shape[1])
     num_points = points1.shape[1]
     residual = (points1 - points2).ravel()
+    print('residual\n', [[1 + (r / 2) , sum([residual[r], residual[r+1]])] for r in range(0,residual.shape[0], 2)])
     MSE = 1.0 / num_points * np.sum(residual ** 2)
 
     return np.sqrt(MSE)
@@ -208,7 +209,7 @@ if __name__ == '__main__':
     import argparse
     
     parser = argparse.ArgumentParser('Matching the estimated map and the true map')
-    parser.add_argument('--true-map', type=str, default='7fruits_practice_map_3.txt')
+    parser.add_argument('--true-map', type=str, default='7fruits_practice_map_1.txt')
     parser.add_argument('--slam-est', type=str, default='slam.txt')
     parser.add_argument('--target-est', type=str, default='targets.txt')
     parser.add_argument('--slam-only', action='store_true')
