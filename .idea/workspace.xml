@@ -7,16 +7,9 @@
   <component name="ChangeListManager">
     <list default="true" id="0695032c-d3e6-49d1-941c-741870d2fed5" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Week08-09/TargetPoseEst.py" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/TargetPoseEst.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Week08-09/aruco_true.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/aruco_true.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Week08-09/auto_fruit_search_1.py" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/auto_fruit_search_1.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/images.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/images.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/mapping_eval.py" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/mapping_eval.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/slam.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/slam.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Week08-09/lab_output/targets.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/lab_output/targets.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Week08-09/network/scripts/detector.py" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/network/scripts/detector.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Week08-09/slam/ekf_old.py" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/slam/ekf_old.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Week08-09/util/DatasetHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/util/DatasetHandler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Week08-09/your_file.png" beforeDir="false" afterPath="$PROJECT_DIR$/Week08-09/your_file.png" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
