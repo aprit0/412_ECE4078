@@ -100,14 +100,14 @@ class DatasetPlayer:
 
 # for SLAM (M2), save the map
 class OutputWriter:
-    def __init__(self, folder_name="output/"):
+    def __init__(self, folder_name="output/", write='w'):
         if not folder_name.endswith("/"):
             folder_name = folder_name + "/"
         self.folder = folder_name
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         
-        self.img_f = open(folder_name+"images.txt", 'w')   
+        self.img_f = open(folder_name+"images.txt", write)
         self.map_f = folder_name+"slam.txt"
 
         self.image_count = 0
@@ -115,7 +115,16 @@ class OutputWriter:
     # def __del__(self):
     #     self.img_f.close()
     #     self.map_f.close()
-    
+    def read_map(self, slam):
+        with open(self.map_f, 'r') as map_f:
+            map_dict = json.load(map_f)
+        slam.taglist = map_dict['taglist']
+        slam.markers = np.array(map_dict['map'])
+        covar = np.array(map_dict['covariance'])
+        c_shape = covar.shape[0]
+        slam.P = np.zeros((3 + c_shape, 3+ c_shape))
+        slam.P[3:,3:] = covar
+        return slam
     def write_map(self, slam):
         map_dict = {"taglist":slam.taglist,
                     "map":slam.markers.tolist(),

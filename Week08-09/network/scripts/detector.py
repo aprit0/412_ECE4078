@@ -8,6 +8,7 @@ from args import args
 from res18_skip import Resnet18Skip
 from torchvision import transforms
 import cv2
+import random
 
 class Detector:
     def __init__(self, ckpt, use_gpu=False):
@@ -56,19 +57,23 @@ class Detector:
         #colour_map = self.visualise_output(pred)
         return detPandas, colour_map
 
-
     def visualise_yolo(self, np_img, nn_output):
         # get bounding boxes
+        colours = []
         for idx in nn_output.index:
+            color = [random.randint(0, 255) for i in range(3)]
             xA = int(nn_output.xmin[idx])
             xB = int(nn_output.xmax[idx])
             yA = int(nn_output.ymin[idx])
             yB = int(nn_output.ymax[idx])
             # drawing bounding box on the image
-            predImg = cv2.rectangle(np_img, (xA,yA), (xB,yB), (255,0,0), 2)
+            predImg = cv2.rectangle(np_img, (xA,yA), (xB,yB), color, 2)
+            colours.append(color)
         # resizing the image
         color_map = cv2.resize(predImg, (320, 240), cv2.INTER_NEAREST)
-        cv2.putText(color_map, f"{nn_output.name[0]}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36, 255, 12), 1)
+        f_names = list(nn_output.name)
+        for i in range(len(colours)):
+           cv2.putText(color_map, str(f_names[i]), (10, 30 * i + 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, colours[i], 1)
         # wring text on bounding box
         return color_map
 

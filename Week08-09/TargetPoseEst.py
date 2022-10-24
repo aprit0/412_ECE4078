@@ -82,7 +82,7 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
     target_dimensions.append(apple_dimensions)
     lemon_dimensions = [0.060588, 0.059299, 0.053017]
     target_dimensions.append(lemon_dimensions)
-    pear_dimensions = [0.0946, 0.0948, 0.155]
+    pear_dimensions = [0.0946, 0.0948, 0.135]
     target_dimensions.append(pear_dimensions)
     orange_dimensions = [0.0721, 0.0771, 0.0739]
     target_dimensions.append(orange_dimensions)
@@ -121,113 +121,63 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
     return target_pose_dict
 
 
-def clustering(fruit_list):
-    # Transform the data
-    X = np.squeeze(np.array(fruit_list))
-    try:
-        kmeans = KMeans(n_clusters=2, random_state=0).fit(X)
-        centres = np.clip(kmeans.cluster_centers_, -1.2, 1.2)
-        print(centres)
-        dist = np.linalg.norm(centres[0] - centres[1])
-        print(f'\ndist {dist}\n')
-        if dist < 0.5:
+def clustering(fruit_list, n_clusters=2):
+    # Remove extreme outliers
+    new_list = []
+    for point in fruit_list:
+        if abs(point[0]) < 1.5 and abs(point[1]) < 1.5:
+            new_list.append(point)
+    if len(new_list) > 0:
+        # Transform the data
+        if len(new_list) == 1:
+            X = np.array(new_list)
+        else:
+            X = np.squeeze(np.array(new_list))
+        try:
+            kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(X)
+            centres = np.clip(kmeans.cluster_centers_, -1.2, 1.2)
+            if n_clusters == 1:
+               pass
+            else:
+                dist = np.linalg.norm(centres[0] - centres[1])
+                print(f'\ndist {dist}\n')
+                if dist < 0.4:
+                    kmeans = KMeans(n_clusters=1, random_state=0).fit(X)
+                    centres = list(np.clip(kmeans.cluster_centers_, -1.2, 1.2))
+        except Exception as e:
+            print('Clusterfuck', e)
             kmeans = KMeans(n_clusters=1, random_state=0).fit(X)
             centres = list(np.clip(kmeans.cluster_centers_, -1.2, 1.2))
-    except Exception as e:
-        print('Clusterfuck', e)
-        kmeans = KMeans(n_clusters=1, random_state=0).fit(X)
-        centres = list(np.clip(kmeans.cluster_centers_, -1.2, 1.2))
-
-
+    else:
+        centres = [[0., 0.]]*n_clusters
     return [[i[1], i[0]] for i in centres]
 
 
 # merge the estimations of the targets so that there are at most 3 estimations of each target type
-def merge_estimations(target_pose_dict):
-    target_map = target_pose_dict
-    apple_est, lemon_est, pear_est, orange_est, strawberry_est = [], [], [], [], []
-    target_est = {}
+def merge_estimations(target_pose_dict, search_list):
+    keys = ['apple', 'lemon', 'pear', 'orange', 'strawberry']
+    target_map = {key:[] for key in keys}
     # combine the estimations from multiple detector outputs
     print('target_pose_dict', target_pose_dict)
-    for f in target_map:
-        for key in target_map[f]:
-            if key.startswith('apple'):
-                apple_est.append(np.array(list(target_map[f][key].values()), dtype=float))
-            elif key.startswith('lemon'):
-                lemon_est.append(np.array(list(target_map[f][key].values()), dtype=float))
-            elif key.startswith('pear'):
-                pear_est.append(np.array(list(target_map[f][key].values()), dtype=float))
-            elif key.startswith('orange'):
-                orange_est.append(np.array(list(target_map[f][key].values()), dtype=float))
-            elif key.startswith('strawberry'):
-                strawberry_est.append(np.array(list(target_map[f][key].values()), dtype=float))
+    for f in target_pose_dict:
+        for key in target_pose_dict[f]:
 
+            target_map[key].append(np.array(list(target_pose_dict[f][key].values()), dtype=float))
+
+    print('---target_map---\n', target_map)
     ######### Replace with your codes #########
     # TODO: the operation below takes the first three estimations of each target type, replace it with a better merge solution
-    def do_cluster(fruit_list):
-        new_list = []
-        for point in fruit_list:
-            if abs(point[0]) < 1.5 and abs(point[1]) < 1.5:
-                new_list.append(point)
-        print('new len: ', len(new_list))
-        return clustering(new_list) if len(new_list) > 0 else [0., 0.]
-    if len(apple_est) > 2:
-        print('apple len: ', len(apple_est))
-        apple_est = do_cluster(apple_est)
-    elif not apple_est:
-        apple_est = [[0., 0.], [0., 0.]]
-    else:
-        apple_est.append([0., 0.])
-    if len(lemon_est) > 2:
-        print('lemon_est: ', len(lemon_est))
-        lemon_est = do_cluster(lemon_est)
-    elif not lemon_est:
-        lemon_est = [[0., 0.], [0., 0.]]
-    else:
-        lemon_est.append([0., 0.])
-    if len(pear_est) > 2:
-        print('pear_est: ', len(pear_est))
-        pear_est = do_cluster(pear_est)
-    elif not pear_est:
-        pear_est = [[0., 0.], [0., 0.]]
-    else:
-        pear_est.append([0., 0.])
-    if len(orange_est) > 2:
-        print('ora_est: ', len(orange_est))
-        orange_est = do_cluster(orange_est)
-    elif not orange_est:
-        orange_est = [[0., 0.], [0., 0.]]
-    else:
-        orange_est.append([0., 0.])
-    if len(strawberry_est) > 2:
-        print('strawberry_est: ', len(strawberry_est))
-        strawberry_est = do_cluster(strawberry_est)
-    elif not strawberry_est:
-        strawberry_est = [[0., 0.], [0., 0.]]
-    else:
-        strawberry_est.append([0., 0.])
+    target_est = {}
+    for key in target_map.keys():
+        if key in search_list:
+            n_clusters = 1
+        else:
+            n_clusters = 2
+        est = clustering(target_map[key], n_clusters)
+        for i in range(n_clusters):
+           target_est[f'{key}_{i}'] = {'y': est[i][0], 'x': est[i][1]}
 
-    for i in range(2):
-        try:
-            target_est['apple_' + str(i)] = {'y': apple_est[i][1], 'x': apple_est[i][0]}
-        except:
-            pass
-        try:
-            target_est['lemon_' + str(i)] = {'y': lemon_est[i][1], 'x': lemon_est[i][0]}
-        except:
-            pass
-        try:
-            target_est['pear_' + str(i)] = {'y': pear_est[i][1], 'x': pear_est[i][0]}
-        except:
-            pass
-        try:
-            target_est['orange_' + str(i)] = {'y': orange_est[i][1], 'x': orange_est[i][0]}
-        except:
-            pass
-        try:
-            target_est['strawberry_' + str(i)] = {'y': strawberry_est[i][1], 'x': strawberry_est[i][0]}
-        except:
-            pass
+    print('---target_est---\n', target_est)
     ###########################################
 
     return target_est

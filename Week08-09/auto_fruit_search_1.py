@@ -44,6 +44,7 @@ from network.scripts.detector import Detector
 
 class Operate:
     def __init__(self, args):
+        self.args = args
         self.folder = 'pibot_dataset/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
@@ -62,17 +63,17 @@ class Operate:
         self.aruco_det = aruco.aruco_detector(
             self.ekf.robot, marker_length=0.07)  # size of the ARUCO markers
 
-        # self.choiceSlam = input("Do you want to load map (default loads map)?")
-        # if self.choiceSlam:
-        #     self.ekf.load_map()
-        # else:
-        #     pass
 
         if args.save_data:
             self.data = dh.DatasetWriter('record')
         else:
             self.data = None
-        self.output = dh.OutputWriter('lab_output')
+        self.choiceSlam = int(input("Do you want to load map?: "))
+        if self.choiceSlam:
+            self.output = dh.OutputWriter('lab_output', 'a')
+            self.ekf = self.output.read_map(self.ekf)
+        else:
+            self.output = dh.OutputWriter('lab_output', 'w')
         self.command = {'motion': [0, 0],
                         'inference': False,
                         'output': False,
@@ -82,7 +83,7 @@ class Operate:
         self.pred_fname = ''
         self.request_recover_robot = False
         self.file_output = None
-        self.ekf_on = True
+        self.ekf_on = False
         self.double_reset_comfirm = 0
         self.image_id = 0
         self.notification = 'Press ENTER to start SLAM'
@@ -211,6 +212,7 @@ class Operate:
         fileK = "{}intrinsic.txt".format('./calibration/param/')
         camera_matrix = np.loadtxt(fileK, delimiter=',')
         base_dir = Path('./')
+        search_list = read_search_list(self.args.searchList)
 
         # a dictionary of all the saved detector outputs
         image_poses = {}
@@ -218,7 +220,7 @@ class Operate:
             for line in fp.readlines():
                 pose_dict = ast.literal_eval(line)
                 image_poses[pose_dict['imgfname']] = pose_dict['pose']
-
+        print('image poses', image_poses)
         # estimate pose of targets in each detector output
         target_map = {}
         for file_path in image_poses.keys():
@@ -226,7 +228,7 @@ class Operate:
             completed_img_dict = get_image_info(base_dir, file_path, image_poses[file_path])
             target_map[file_path] = estimate_pose(base_dir, camera_matrix, completed_img_dict)
         # merge the estimations of the targets so that there are at most 3 estimations of each target type
-        target_est = merge_estimations(target_map)
+        target_est = merge_estimations(target_map, search_list)
         # save target pose estimations
         with open(base_dir / 'lab_output/targets.txt', 'w') as fo:
             print('operate target_est\n', target_est)
@@ -305,14 +307,17 @@ class Operate:
                 self.quit = True
         if self.quit:
             try:
-                x = int(input('Do you want to quit? 0||1'))
+                x = int(input('1: Quit and Save, 2: Quit and dont Save'))
             except:
                 print('Retry')
                 x = 0
-            if x:
+            if x == 1:
+                self.output.write_map(self.ekf)
                 self.getTargetPose()
                 # run auto_fruit_search_0
                 # pygame.quit()
+            elif x == 2:
+                pass
             else:
                 self.quit = False
 
@@ -490,8 +495,8 @@ def read_True_map(fnameArcuo, fnameFruit):
     aruco_True_pos[0] = [50, 50]
     # remove unique id of targets of the same type
     for key in gt_dict:
-        x = np.round(gt_dict[key]['y'], 1)  # reading every x coordinates
-        y = np.round(gt_dict[key]['x'], 1)  # reading every y coordinates
+        x = np.round(gt_dict[key]['x'], 1)  # reading every x coordinates
+        y = np.round(gt_dict[key]['y'], 1)  # reading every y coordinates
 
         if key.startswith('aruco'):
             if key.startswith('aruco10'):
@@ -511,13 +516,13 @@ def read_True_map(fnameArcuo, fnameFruit):
     return fruit_list, fruit_True_pos, aruco_True_pos
 
 
-def read_search_list():
+def read_search_list(fname):
     """read the search order of the target fruits
 
     @return: search order of the target fruits
     """
     search_list = []
-    with open('7fruits_practice_map_search_list_1.txt', 'r') as fd:
+    with open(fname, 'r') as fd:
         fruits = fd.readlines()
 
         for fruit in fruits:
@@ -604,6 +609,7 @@ if __name__ == "__main__":
     # parser.add_argument("--map", type=str, default='M4_3fruits_lab4.txt')
     parser.add_argument("--map", type=str, default='aruco_true.txt')
     parser.add_argument("--mapFruit", type=str, default='./lab_output/targets.txt')
+    parser.add_argument("--searchList", type=str, default='./M5_lab4_sim_search_list.txt')
     parser.add_argument("--ip", metavar='', type=str, default='localhost')
     parser.add_argument("--port", metavar='', type=int, default=40000)
     args, _ = parser.parse_known_args()
@@ -662,7 +668,7 @@ if __name__ == "__main__":
     # read in the True map
     # fruits_list, fruits_True_pos, aruco_True_pos = read_True_map(args.map)
     fruits_list, fruits_True_pos, aruco_True_pos = read_True_map(args.map, args.mapFruit)
-    search_list = read_search_list()
+    search_list = read_search_list(args.searchList)
     print_target_fruits_pos(search_list, fruits_list, fruits_True_pos)
 
     aruco_list = []
@@ -675,7 +681,10 @@ if __name__ == "__main__":
     f_dict = {}
     for i in range(len(fruits_True_pos)):
         item = item_in_map(f_id[fruits_list[i]], fruits_True_pos[i])
-        f_dict[fruits_list[i]] = fruits_True_pos[i]
+        if fruits_list[i] not in f_dict:
+            f_dict[fruits_list[i]] = [fruits_True_pos[i]]
+        else:
+            f_dict[fruits_list[i]].append(fruits_True_pos[i])
         fruits.append(item)
     print('fruits', fruits[0].coordinates, fruits[0].tag)
     # operate.ekf.add_landmarks(fruits)  # will add known
@@ -690,8 +699,9 @@ if __name__ == "__main__":
     # The following code is only a skeleton code the semi-auto fruit searching task
     # implement RRT, loop is for the number of fruits
 
-    goal = [[f_dict[i][0], f_dict[i][1]] for i in search_list]
+    goal = [[f_dict[i][0][0], f_dict[i][0][1]] for i in search_list]
     print('\n\n GOAL ----------------\n', goal, '\n\n')
+
     obstacles_aruco = []
     lms_xy = operate.ekf.markers[:2, :]
     for i in range(len(operate.ekf.markers[0, :])):
@@ -806,15 +816,7 @@ if __name__ == "__main__":
         for item in route:
             x_obs, y_obs = pixel_to_pose(item, map_dimension, map_resolution)
             path_pose.append([x_obs, y_obs])
-
-        # for g in goal:
-        # map: wall = np.inf, empty space = 1.
-        # String pulling
-        # def str_pull: identifies vertecies in lines, and removes redundant waypoints using gradients
-
-        # route = route[::-1]
-        print('EKF pose', operate.ekf.get_state_vector(), operate.robot_pose)
-        # _ = input("press enter to start moving:... \nstart -- {},\nend -- {},\nroute -- {}".format(pixel_to_pose(new_start, map_dimension, map_resolution), start), (pixel_to_pose(new_goal, map_dimension, map_resolution), goal), path_pose))
+        print('Path: ', route)
         time.sleep(2)
         for point in path_pose:
             operate.waypoint = [point[0], point[1]]

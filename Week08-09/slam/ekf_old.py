@@ -143,7 +143,15 @@ class EKF:
     def predict_covariance(self, raw_drive_meas):
         n = self.number_landmarks() * 2 + 3
         Q = np.zeros((n, n))
-        Q[0:3, 0:3] = self.robot.covariance_drive(raw_drive_meas) #+ 0.001 * np.eye(3)
+        linear_velocity, angular_velocity = self.robot.convert_wheel_speeds(raw_drive_meas.left_speed,
+                                                                            raw_drive_meas.right_speed)
+        Q[0:3, 0:3] = self.robot.covariance_drive(raw_drive_meas) + \
+                      np.abs(1e-4 * (linear_velocity + angular_velocity)) * np.eye(3)
+        # 1e-1: 0.075, 0.071
+        # 1e-2: 0.069, 0.056
+        # 1e-3: 0.053, 0.061
+        # 1e-4: 0.069, 0.054
+        # Q[0:3, 0:3] = self.robot.covariance_drive(raw_drive_meas)# + 0.001 * np.eye(3)
         return Q
 
     def add_landmarks(self, measurements):
