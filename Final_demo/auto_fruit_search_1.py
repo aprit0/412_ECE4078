@@ -715,18 +715,22 @@ if __name__ == "__main__":
     map_arr = np.ones((map_size, map_size))  # shape = 28*28
 
 
-    def pad(map, item_list, full_pad=True):
-
-        if full_pad:
-            pad = 2
-        else:
-            pad = 1
-        for item in item_list:
-            try:
-                map[item[0] - pad: item[0] + pad, item[1] - pad: item[1] + pad] = np.inf
-            except:
-                pass
-        return map
+    def pad_map(input_arr, obstacle_list, pad_max=np.inf, offset=3):
+    input_arr[:, 0] = pad_max
+    input_arr[:, input_arr.shape[0]-1] = pad_max
+    input_arr[0, :] = pad_max
+    input_arr[input_arr.shape[0]-1, :] = pad_max
+    # input_arr should be an array of [0,1] only
+    for rows in range(input_arr.shape[0]):
+        for cols in range(input_arr.shape[1]):
+            if input_arr[rows,cols] != pad_max:
+                # Build a list of all the euclidean distances and find the shortest one
+                euc_list = []
+                for coord in obstacle_list:
+                    euc = np.sqrt(np.sum((np.array(coord) - np.array([rows,cols])) ** 2))    
+                    euc_list.append(euc)
+                input_arr[rows,cols] = offset - min(euc_list)
+    return np.array(input_arr, dtype=np.float32)
 
 
     def str_pull(route):
@@ -761,9 +765,8 @@ if __name__ == "__main__":
     for item in list(fruits_True_pos):
         x_obs, y_obs = pose_to_pixel(item, map_dimension, map_resolution)
         obstacles_map_frame.append([x_obs, y_obs])
-    map_arr = pad(map_arr, obstacles_map_frame, offset=42/2)
+    map_arr = pad_map(map_arr, obstacles_map_frame, offset=42/2)
 
-    map_arr = np.array(map_arr, dtype=np.float32)
     null = pose_to_pixel([0., 0.], map_dimension, map_resolution)
     map_arr[null[0] - 2: null[0] + 2, null[1] - 2: null[1] + 2] = 1
     for g in goal_map_frame:
