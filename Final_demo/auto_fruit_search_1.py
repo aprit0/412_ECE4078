@@ -712,25 +712,30 @@ if __name__ == "__main__":
     map_resolution = 0.1  # metres / pixel
     map_dimension = 1.4 * 3  # metres
     map_size = int(map_dimension / map_resolution)
-    map_arr = np.ones((map_size, map_size))  # shape = 28*28
+    map_arr = np.zeros((map_size, map_size))  # shape = 28*28
 
 
     def pad_map(input_arr, obstacle_list, pad_max=np.inf, offset=3):
-    input_arr[:, 0] = pad_max
-    input_arr[:, input_arr.shape[0]-1] = pad_max
-    input_arr[0, :] = pad_max
-    input_arr[input_arr.shape[0]-1, :] = pad_max
-    # input_arr should be an array of [0,1] only
-    for rows in range(input_arr.shape[0]):
-        for cols in range(input_arr.shape[1]):
-            if input_arr[rows,cols] != pad_max:
-                # Build a list of all the euclidean distances and find the shortest one
-                euc_list = []
-                for coord in obstacle_list:
-                    euc = np.sqrt(np.sum((np.array(coord) - np.array([rows,cols])) ** 2))    
-                    euc_list.append(euc)
-                input_arr[rows,cols] = offset - min(euc_list)
-    return np.array(input_arr, dtype=np.float32)
+        for coord in obstacle_list:
+            try:
+                input_arr[coord[0], coord[1]] = pad_max
+            except:
+                pass
+        input_arr[:, 0] = pad_max
+        input_arr[:, input_arr.shape[0]-1] = pad_max
+        input_arr[0, :] = pad_max
+        input_arr[input_arr.shape[0]-1, :] = pad_max
+        # input_arr should be an array of [0,1] only
+        for rows in range(input_arr.shape[0]):
+            for cols in range(input_arr.shape[1]):
+                if input_arr[rows,cols] != pad_max:
+                    # Build a list of all the euclidean distances and find the shortest one
+                    euc_list = []
+                    for coord in obstacle_list:
+                        euc = 2 / (0.1 * np.sqrt(np.sum((np.array(coord) - np.array([rows,cols])) ** 2)) **0.9)
+                        euc_list.append(euc)
+                    input_arr[rows,cols] = max(euc_list)
+        return np.array(input_arr, dtype=np.float32)
 
 
     def str_pull(route):
@@ -766,12 +771,17 @@ if __name__ == "__main__":
         x_obs, y_obs = pose_to_pixel(item, map_dimension, map_resolution)
         obstacles_map_frame.append([x_obs, y_obs])
     map_arr = pad_map(map_arr, obstacles_map_frame, offset=42/2)
+    plt.imshow(map_arr)
+    plt.colorbar()
+    plt.title(f'max: {np.max(map_arr)}, min: {np.min(map_arr)}')
+    plt.savefig('map_og.png')
+    plt.close()
 
     null = pose_to_pixel([0., 0.], map_dimension, map_resolution)
-    map_arr[null[0] - 2: null[0] + 2, null[1] - 2: null[1] + 2] = 1
     for g in goal_map_frame:
-        map_arr[start_map_frame[0] - 1: start_map_frame[0] + 1, start_map_frame[1] - 1: start_map_frame[1] + 1] = 1
-        map_arr[map_arr == 1] = 5
+        map_arr[start_map_frame[0], start_map_frame[1]] = 1
+        map_arr[g[0], g[1]] = 1
+        # map_arr[map_arr == 1] = 5
         path = pyastar2d.astar_path(map_arr, start_map_frame, g, allow_diagonal=True)
         print('map', map_arr.shape, map_dimension, map_resolution)
         print('start/goal val', map_arr[start_map_frame[0], start_map_frame[1]],
@@ -789,26 +799,24 @@ if __name__ == "__main__":
             time.sleep(0.5)
 
         route = [[float(i[0]), float(i[1])] for i in path]
-        print('pre_route\n', len(route))
-        # route = str_pull(route)
-        # print('post_route\n', len(route))
-
+        viz_map = map_arr.copy()
+        print(viz_map.shape)
         path_pose = []
-        map_arr[map_arr == np.inf] = 255
-        map_arr[map_arr == 1] = 1
-        # import scipy.misc
-        from PIL import Image
+        viz_map[viz_map == np.inf] = 50
+        print(f'\n---------\n{(np.max(viz_map), np.min(viz_map))}')
+        # viz_map = np.interp(viz_map, (np.max(viz_map), np.min(viz_map)), (0, 255))
 
         # attach path to map
         for item in route:
-            map_arr[int(item[0]), int(item[1])] = 128
-        # im_array = np.array([map_arr, map_arr, map_arr]).T
-        # print(im_array.shape)
-        im = Image.fromarray(map_arr)
-        im = im.convert('RGB')
-
-        im.save("your_file.png")
-        # scipy.misc.imsave('outfile.jpg', map_arr)
+            viz_map[int(item[0]), int(item[1])] = 50
+        # from PIL import Image
+        # im = Image.fromarray(viz_map)
+        # im = im.convert('RGB')
+        # im.save("your_file.png")
+        plt.imshow(viz_map)#np.rot90(viz_map, k=-1))
+        plt.colorbar()
+        plt.title(f'max: {np.max(viz_map)}, min: {np.min(viz_map)}')
+        plt.savefig('map.png')
 
         # converting from map frame to pose
         for item in route:
