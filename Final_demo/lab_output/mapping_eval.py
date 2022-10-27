@@ -125,16 +125,15 @@ def apply_transform(theta, x, points):
     return points_transformed
 
 
-def compute_slam_rmse(points1, points2):
+def compute_slam_rmse(points1, points2, taglist):
     # Compute the RMSE between two matched sets of 2D points.
     assert (points1.shape[0] == 2)
     assert (points1.shape[0] == points2.shape[0])
     assert (points1.shape[1] == points2.shape[1])
     num_points = points1.shape[1]
     residual = (points1 - points2).ravel()
-    print('residual\n', json.dumps({1 + (r / 2) : round(sum([residual[r], residual[r+1]]), 4) for r in range(0,residual.shape[0], 2)}, indent=4))
+    print('residual\n', json.dumps({taglist[int((r / 2))] : round(sum([residual[r], residual[r+1]]), 4) for r in range(0,residual.shape[0], 2)}, indent=4))
     MSE = 1.0 / num_points * np.sum(residual ** 2)
-
     return np.sqrt(MSE)
 
 
@@ -232,9 +231,9 @@ if __name__ == '__main__':
         aruco_est = parse_slam_map(args.slam_est)
         taglist, slam_est_vec, slam_gt_vec = match_aruco_points(aruco_est, aruco_gt)
         theta, x = solve_umeyama2d(slam_est_vec, slam_gt_vec)
-        slam_est_vec_aligned = apply_transform(theta, x, slam_est_vec)
+        slam_est_vec_aligned = apply_transform(theta, x, slam_est_vec, taglist)
 
-        slam_rmse = compute_slam_rmse(slam_est_vec_aligned, slam_gt_vec)
+        slam_rmse = compute_slam_rmse(slam_est_vec_aligned, slam_gt_vec, taglist)
 
         print(f'The SLAM RMSE = {np.round(slam_rmse, 3)}')
 
@@ -250,8 +249,8 @@ if __name__ == '__main__':
         theta, x = solve_umeyama2d(slam_est_vec, slam_gt_vec)
         slam_est_vec_aligned = apply_transform(theta, x, slam_est_vec)
 
-        slam_rmse_raw = compute_slam_rmse(slam_est_vec, slam_gt_vec)
-        slam_rmse_aligned = compute_slam_rmse(slam_est_vec_aligned, slam_gt_vec)
+        slam_rmse_raw = compute_slam_rmse(slam_est_vec, slam_gt_vec, taglist)
+        slam_rmse_aligned = compute_slam_rmse(slam_est_vec_aligned, slam_gt_vec, taglist)
 
         print(f'The SLAM RMSE before alignment = {np.round(slam_rmse_raw, 3)}')
         print(f'The SLAM RMSE after alignment = {np.round(slam_rmse_aligned, 3)}')
