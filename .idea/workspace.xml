@@ -7,9 +7,12 @@
   <component name="ChangeListManager">
     <list default="true" id="0695032c-d3e6-49d1-941c-741870d2fed5" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Final_demo/.auto_fruit_search_1.py.swp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Final_demo/M5_lab4_sim_search_list.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/M5_lab4_sim_search_list.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Final_demo/TargetPoseEst.py" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/TargetPoseEst.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Final_demo/aruco_true.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/aruco_true.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Final_demo/auto_fruit_search_1.py" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/auto_fruit_search_1.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Final_demo/lab_output/M5_lab4_sim_map.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/lab_output/M5_lab4_sim_map.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Final_demo/lab_output/images.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/lab_output/images.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Final_demo/lab_output/pred_0.png" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/lab_output/pred_0.png" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Final_demo/lab_output/pred_1.png" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/lab_output/pred_1.png" afterDir="false" />
@@ -18,14 +21,11 @@
       <change beforePath="$PROJECT_DIR$/Final_demo/lab_output/pred_4.png" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/lab_output/pred_4.png" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Final_demo/lab_output/pred_5.png" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/lab_output/pred_5.png" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Final_demo/lab_output/pred_6.png" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/lab_output/pred_6.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Final_demo/lab_output/pred_7.png" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/lab_output/pred_7.png" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Final_demo/lab_output/slam.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/lab_output/slam.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Final_demo/lab_output/targets.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/lab_output/targets.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Final_demo/map.png" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/map.png" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Final_demo/map_og.png" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/map_og.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Final_demo/network/scripts/detector.py" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/network/scripts/detector.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Final_demo/slam/aruco_detector.py" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/slam/aruco_detector.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Final_demo/slam/ekf_old.py" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/slam/ekf_old.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Final_demo/util/measure.py" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/util/measure.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Final_demo/your_file.png" beforeDir="false" afterPath="$PROJECT_DIR$/Final_demo/your_file.png" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />

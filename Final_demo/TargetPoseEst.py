@@ -82,10 +82,10 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
     target_dimensions.append(apple_dimensions)
     lemon_dimensions = [0.060588, 0.059299, 0.053017]
     target_dimensions.append(lemon_dimensions)
-    pear_dimensions = [0.0946, 0.0948, 0.135]
-    target_dimensions.append(pear_dimensions)
     orange_dimensions = [0.0721, 0.0771, 0.0739]
     target_dimensions.append(orange_dimensions)
+    pear_dimensions = [0.0946, 0.0948, 0.135] #135
+    target_dimensions.append(pear_dimensions)
     strawberry_dimensions = [0.052, 0.0346, 0.0376]
     target_dimensions.append(strawberry_dimensions)
 
@@ -99,6 +99,8 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
             box = completed_img_dict[target_num]['target'][item_num]  # [[x],[y],[width],[height]]
             robot_pose = completed_img_dict[target_num]['robot'][item_num]  # [[x], [y], [theta]]
             true_height = target_dimensions[target_num - 1][2]
+            print('TRUE HEIGHT\n',  target_list[target_num-1], true_height)
+            print('robot_pose\n', robot_pose)
 
             ######### Replace with your codes #########
             # TODO: compute pose of the target based on bounding box info and robot's pose
@@ -175,7 +177,11 @@ def merge_estimations(target_pose_dict, search_list):
             n_clusters = 2
         est = clustering(target_map[key], n_clusters)
         for i in range(n_clusters):
-           target_est[f'{key}_{i}'] = {'y': est[i][0], 'x': est[i][1]}
+            print('TPE key:', key, i, est)
+            try:
+                target_est[f'{key}_{i}'] = {'y': est[i][0], 'x': est[i][1]}
+            except Exception as e:
+                print('TPE: ', e)
 
     print('---target_est---\n', target_est)
     ###########################################

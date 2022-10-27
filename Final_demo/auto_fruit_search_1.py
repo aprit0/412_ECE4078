@@ -230,10 +230,12 @@ class Operate:
             print(file_path)
             completed_img_dict = get_image_info(base_dir, file_path, image_poses[file_path])
             target_map[file_path] = estimate_pose(base_dir, camera_matrix, completed_img_dict)
+        print('---------------------------------')
         # merge the estimations of the targets so that there are at most 3 estimations of each target type
         target_est = merge_estimations(target_map, search_list)
         # save target pose estimations
         with open(base_dir / 'lab_output/targets.txt', 'w') as fo:
+            print('---------------------------------')
             print('operate target_est\n', target_est)
             json.dump(target_est, fo)
 
@@ -321,6 +323,8 @@ class Operate:
                 # pygame.quit()
             elif x == 2:
                 pass
+            elif x == 3:
+                self.getTargetPose()
             else:
                 self.quit = False
 
@@ -389,7 +393,7 @@ class Operate:
             print('pose', self.robot_pose, self.waypoint)
             # keep travelling to goal
             print('ang/dist', angle_to_waypoint, distance_to_goal)
-            if abs(angle_to_waypoint) > np.pi / 45:  # if the angle to the waypoint is above a threshold, turn
+            if abs(angle_to_waypoint) > np.pi / 30:  # if the angle to the waypoint is above a threshold, turn
                 # Turn
                 if angle_to_waypoint < 0:  # turn left
                     self.command['motion'] = [0, 1]
@@ -636,20 +640,20 @@ if __name__ == "__main__":
                      pygame.image.load('pics/8bit/pibot5.png')]
     pygame.display.update()
 
-    start = False
+    start = True
 
     # UNCOMMENT FOR M5
-    # counter = 40
-    # while not start:
-    #     for event in pygame.event.get():
-    #         if event.type == pygame.KEYDOWN:
-    #             start = True
-    #     canvas.blit(splash, (0, 0))
-    #     x_ = min(counter, 600)
-    #     if x_ < 600:
-    #         canvas.blit(pibot_animate[counter % 10 // 2], (x_, 565))
-    #         pygame.display.update()
-    #         counter += 2
+    counter = 40
+    while not start:
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                start = True
+        canvas.blit(splash, (0, 0))
+        x_ = min(counter, 600)
+        if x_ < 600:
+            canvas.blit(pibot_animate[counter % 10 // 2], (x_, 565))
+            pygame.display.update()
+            counter += 2
 
     operate = Operate(args)
     ppi = PenguinPi(args.ip, args.port)
@@ -830,7 +834,7 @@ if __name__ == "__main__":
             path_pose.append([x_obs, y_obs])
         print('Path: ', route)
         time.sleep(2)
-        for point in path_pose:
+        for point in path_pose[:-1]:
             operate.waypoint = [point[0], point[1]]
             operate.drive_to_point()
         print('arrive at: ', operate.robot_pose)
