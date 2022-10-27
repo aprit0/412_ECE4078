@@ -80,7 +80,7 @@ class Operate:
                         'save_image': False}
         self.quit = False
         self.pred_fname = ''
-        self.request_recover_robot = False
+        self.request_recover_robot = True
         self.file_output = None
         self.ekf_on = False
         self.double_reset_comfirm = 0
@@ -109,11 +109,11 @@ class Operate:
 
     # wheel control
     def control(self):
-        if args.play_data:
-            lv, rv = self.pibot.set_velocity()
-        else:
-            lv, rv = self.pibot.set_velocity(
-                self.command['motion'], tick=40, turning_tick=10)
+        tick_multi = 2 if self.args.world == 'sim' else 1
+        tick_turn = 5 * tick_multi
+        tick_drive = 20 * tick_multi
+        lv, rv = self.pibot.set_velocity(
+            self.command['motion'], tick=tick_drive, turning_tick=tick_turn)
         if not self.data is None:
             self.data.write_keyboard(lv, rv)
         dt = time.time() - self.control_clock
@@ -144,7 +144,7 @@ class Operate:
                 self.robot_pose = pose_update
             else:
                 self.robot_pose = pose_predict
-        print('state: update_slam', self.robot_pose, lms)
+        # print('state: update_slam', self.robot_pose, lms)
         return self.robot_pose
 
     # using computer vision to detect targets
@@ -164,13 +164,17 @@ class Operate:
             image = self.pibot.get_image()
             image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
             cv2.imwrite(f_, image)
-            self.image_id += 1
             self.command['save_image'] = False
-            self.notification = f'{f_} is saved'
+            self.notification = f'{self.image_id} images out of 7?'
+            self.image_id += 1
 
     # wheel and camera calibration for SLAM
     def init_ekf(self, datadir, ip):
-        fileK = "{}intrinsic.txt".format(datadir)
+        if self.args.world == 'sim':
+            fileK = "{}intrinsic.txt".format(datadir)
+        else:
+            fileK = "{}intrinsic_pibot.txt".format(datadir)
+
         camera_matrix = np.loadtxt(fileK, delimiter=',')
         fileD = "{}distCoeffs.txt".format(datadir)
         dist_coeffs = np.loadtxt(fileD, delimiter=',')
@@ -195,7 +199,7 @@ class Operate:
                 # image = cv2.cvtColor(self.file_output[0], cv2.COLOR_RGB2BGR)
                 self.pred_fname = self.output.write_image(self.file_output[0],
                                                           self.file_output[1])
-                self.notification = f'Prediction is saved to {operate.pred_fname}'
+                self.notification = f'{self.output.image_count} images out of 7?'
             else:
                 self.notification = f'No prediction in buffer, save ignored'
             self.command['save_inference'] = False
@@ -369,11 +373,12 @@ class Operate:
         x_diff = x_goal - x
         y_diff = y_goal - y
         alpha = self.clamp_angle(theta - np.arctan2(y_diff, x_diff))
-        print('th', theta, np.arctan2(y_diff, x_diff))
+        # print('th', theta, np.arctan2(y_diff, x_diff))
 
         return alpha
 
     def drive_to_point(self):
+        self.args.world = 'real'
         self.request_recover_robot = True
         distance_to_goal = self.get_distance_robot_to_goal()
         angle_to_waypoint = self.get_angle_robot_to_goal()
@@ -604,9 +609,10 @@ if __name__ == "__main__":
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
     parser.add_argument("--save_data", action='store_true')
     parser.add_argument("--play_data", action='store_true')
-    parser.add_argument("--ckpt", default='/home/ece4078/412_ECE4078/Final_demo/network/scripts/model/model.best.pt')
+    parser.add_argument("--ckpt", default='/home/ece4078/412_ECE4078/Final_demo/network/scripts/model/best_m.pt')
     # parser.add_argument("--map", type=str, default='M4_3fruits_lab4.txt')
     parser.add_argument("--map", type=str, default='aruco_true.txt')
+    parser.add_argument("--world", type=str, default='sim') # ------------- CHANGE to 'real'
     parser.add_argument("--mapFruit", type=str, default='./lab_output/targets.txt')
     parser.add_argument("--searchList", type=str, default='./M5_lab4_sim_search_list.txt')
     parser.add_argument("--ip", metavar='', type=str, default='localhost')
@@ -633,17 +639,17 @@ if __name__ == "__main__":
     start = False
 
     # UNCOMMENT FOR M5
-    counter = 40
-    while not start:
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN:
-                start = True
-        canvas.blit(splash, (0, 0))
-        x_ = min(counter, 600)
-        if x_ < 600:
-            canvas.blit(pibot_animate[counter % 10 // 2], (x_, 565))
-            pygame.display.update()
-            counter += 2
+    # counter = 40
+    # while not start:
+    #     for event in pygame.event.get():
+    #         if event.type == pygame.KEYDOWN:
+    #             start = True
+    #     canvas.blit(splash, (0, 0))
+    #     x_ = min(counter, 600)
+    #     if x_ < 600:
+    #         canvas.blit(pibot_animate[counter % 10 // 2], (x_, 565))
+    #         pygame.display.update()
+    #         counter += 2
 
     operate = Operate(args)
     ppi = PenguinPi(args.ip, args.port)
@@ -766,7 +772,7 @@ if __name__ == "__main__":
     obstacles_map_frame = []
     for item in list(aruco_True_pos):
         x_obs, y_obs = pose_to_pixel(item, map_dimension, map_resolution)
-        obstacles_map_frame.append([x_obs, y_obs])
+        obstacles_map_frame.append([y_obs, x_obs])
     for item in list(fruits_True_pos):
         x_obs, y_obs = pose_to_pixel(item, map_dimension, map_resolution)
         obstacles_map_frame.append([x_obs, y_obs])
@@ -799,7 +805,7 @@ if __name__ == "__main__":
             time.sleep(0.5)
 
         route = [[float(i[0]), float(i[1])] for i in path]
-        viz_map = map_arr.copy()
+        viz_map = np.copy(map_arr)
         print(viz_map.shape)
         path_pose = []
         viz_map[viz_map == np.inf] = 50
@@ -809,10 +815,10 @@ if __name__ == "__main__":
         # attach path to map
         for item in route:
             viz_map[int(item[0]), int(item[1])] = 50
-        # from PIL import Image
-        # im = Image.fromarray(viz_map)
-        # im = im.convert('RGB')
-        # im.save("your_file.png")
+        from PIL import Image
+        im = Image.fromarray(viz_map)
+        im = im.convert('RGB')
+        im.save("your_file.png")
         plt.imshow(viz_map)#np.rot90(viz_map, k=-1))
         plt.colorbar()
         plt.title(f'max: {np.max(viz_map)}, min: {np.min(viz_map)}')

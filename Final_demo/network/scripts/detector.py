@@ -46,15 +46,20 @@ class Detector:
         # yolo colormap
 
         if not detPandas.empty:
-            colour_map = self.visualise_yolo(np_img, detPandas)
             # deleting rows if conf <0.75
             print('Pandas LOW CONFIDENCES: ', detPandas[detPandas.confidence<0.75])
-            detPandas = detPandas.drop(detPandas[detPandas.confidence<0.75].index)
+            detPandas = detPandas.drop(detPandas[detPandas.confidence<0.85].index)
+            try:
+                detPandas = detPandas.drop(detPandas.index[1:])
+            except:
+                pass
             print("\ndetPandas", detPandas)
+            colour_map = self.visualise_yolo(np_img, detPandas)
         else:
             colour_map = cv2.resize(np_img, (320, 240), cv2.INTER_NEAREST)
         #print(np.shape(color_mapYolo))
         #colour_map = self.visualise_output(pred)
+
         return detPandas, colour_map
 
     def visualise_yolo(self, np_img, nn_output):

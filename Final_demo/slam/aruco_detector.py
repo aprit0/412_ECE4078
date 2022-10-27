@@ -19,24 +19,49 @@ class aruco_detector:
         # Perform detection
         corners, ids, rejected = cv2.aruco.detectMarkers(
             img, self.aruco_dict, parameters=self.aruco_params)
-        rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
-            corners, self.marker_length, self.camera_matrix, self.distortion_params)
         # rvecs, tvecs = cv2.aruco.estimatePoseSingleMarkers(corners, self.marker_length, self.camera_matrix, self.distortion_params) # use this instead if you got a value error
 
         if ids is None:
             return [], img
+        # remove duplicates in corners
+        corn = np.unique(corners)
 
-        # Compute the marker positions
+        # check if there are double ups
+        # remove double up with smaller area
+        # ids: list of id in order
+        # corners: list of corners in order
+        id_dict = {}
+        for i in range(len(ids)):
+            id = int(ids[i])
+            corn = corners[i]
+            if id in id_dict:
+                id_dict[id].append(corn)
+            else:
+                id_dict[id] = [corn]
+        for id in id_dict:
+            if len(id_dict[id]) > 1:
+                # get max dist of corners and save that one
+                max_euc = 0
+                max_corn = None
+                for id_corn in id_dict[id]:
+                    euc = np.linalg.norm(id_corn[0][2] - id_corn[0][0])
+                    if max_euc < euc:
+                        max_euc = euc
+                        max_corn = id_corn
+                id_dict[id] = max_corn
+            else:
+                id_dict[id] = id_dict[id][0]
+        ids = list(id_dict.keys())
+        ids = np.array([[i] for i in ids])
+        vals_dict = id_dict.values()
+        corners = [np.array(i) for i in vals_dict]
+
+        rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
+            corners, self.marker_length, self.camera_matrix, self.distortion_params)
         measurements = []
         seen_ids = []
         for i in range(len(ids)):
-            idi = ids[i,0]
-            # Some markers appear multiple times but should only be handled once.
-            if idi in seen_ids:
-                continue
-            else:
-                seen_ids.append(idi)
-
+            idi = ids[i][0]
             lm_tvecs = tvecs[ids==idi].T
             lm_bff2d = np.block([[lm_tvecs[2,:]],[-lm_tvecs[0,:]]])
             lm_bff2d = np.mean(lm_bff2d, axis=1).reshape(-1,1)

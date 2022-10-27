@@ -146,13 +146,25 @@ class EKF:
         linear_velocity, angular_velocity = self.robot.convert_wheel_speeds(raw_drive_meas.left_speed,
                                                                             raw_drive_meas.right_speed)
         Q[0:3, 0:3] = self.robot.covariance_drive(raw_drive_meas) + \
-                      np.abs(5e-4 * (linear_velocity + angular_velocity)) * np.eye(3)
-        # 1e-1: 0.075, 0.071
+                      np.abs(5e-4 * (np.abs(linear_velocity) + np.abs(angular_velocity))) * np.eye(3)
+        # 1e-1|0.001: 0.075, 0.071
         # 1e-2: 0.069, 0.056
         # 5e-3: 0.07,
         # 1e-3: 0.053, 0.061
         # 5e-4: 0.055, 0.05
         # 1e-4: 0.069, 0.054
+        # ------
+        # 5e-3|0.005: 0.068
+        # 1e-3|0.005: 0.06
+        # 5e-4|0.005: 0.087, 0.089
+        # 5e-3|0.001: 0.103
+        # 1e-3|0.001: 0.092
+        # 5e-4|0.001: 0.079
+        # 1e-4|0.001: 0.088
+        # ------
+        # 5e-4|0.005: 0.057
+        # 5e-4|0.01: 0.07
+
         # Q[0:3, 0:3] = self.robot.covariance_drive(raw_drive_meas)# + 0.001 * np.eye(3)
         return Q
 
@@ -178,7 +190,7 @@ class EKF:
             lm_inertial = robot_xy + R_theta @ lm_bff
 
             self.taglist.append(int(lm.tag))
-            print(lm_inertial)
+            # print(lm_inertial)
             self.markers = np.concatenate((self.markers, lm_inertial), axis=-1)
 
             # Create a simple, large covariance to be fixed by the update step

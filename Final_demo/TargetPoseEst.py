@@ -49,19 +49,19 @@ def get_image_info(base_dir, file_path, image_poses):
     # image.show()
     out = model(image)
     detPandas = out.pandas().xyxy[0]
-    print('\n',detPandas,'\n')
+    print('TPE: OUT\n',out.xyxy[0],'\n')
     # generate dict
-    for object in out.xyxy[0]:
-        try:
-            target_num = 1 if int(object[-1]) == 0 else int(object[-1])
-            width, height = float(object[2] - object[0]), float(object[3] - object[1])
-            x, y = float(object[0]) + width / 2, float(object[1]) + height / 2
-            box = [x, y, width, height]
-            pose = image_poses  # [i[0] for i in image_poses]
-            target_lst_box[target_num - 1].append(box)  # bouncing box of target
-            target_lst_pose[target_num - 1].append(np.array(pose).reshape(3, ))  # robot pose
-        except ZeroDivisionError:
-            pass
+    object = out.xyxy[0][0]
+    try:
+        target_num = 1 if int(object[-1]) == 0 else int(object[-1])
+        width, height = float(object[2] - object[0]), float(object[3] - object[1])
+        x, y = float(object[0]) + width / 2, float(object[1]) + height / 2
+        box = [x, y, width, height]
+        pose = image_poses  # [i[0] for i in image_poses]
+        target_lst_box[target_num - 1].append(box)  # bouncing box of target
+        target_lst_pose[target_num - 1].append(np.array(pose).reshape(3, ))  # robot pose
+    except ZeroDivisionError:
+        pass
     # if there are more than one objects of the same type, combine them
     for i in range(5):
         if len(target_lst_box[i]) > 0:
